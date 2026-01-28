@@ -129,6 +129,8 @@ export default function Calculator() {
               </label>
               <input
                 type="text"
+                name="address"
+                autoComplete="street-address"
                 value={formData.address}
                 onChange={(e) => handleInputChange('address', e.target.value)}
                 placeholder="Rua, número, cidade..."
@@ -199,6 +201,8 @@ export default function Calculator() {
               </label>
               <input
                 type="text"
+                name="name"
+                autoComplete="name"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder="O seu nome"
@@ -213,6 +217,8 @@ export default function Calculator() {
               </label>
               <input
                 type="email"
+                name="email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="seu@email.com"
@@ -227,6 +233,8 @@ export default function Calculator() {
               </label>
               <input
                 type="tel"
+                name="phone"
+                autoComplete="tel"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 placeholder="+351 912 345 678"
