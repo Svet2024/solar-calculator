@@ -3,7 +3,7 @@ import Calculator from '@/components/Calculator'
 export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12 px-4">
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-bold text-solar-blue text-center mb-2">
           Calculadora Solar
         </h1>
