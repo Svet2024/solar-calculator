@@ -83,6 +83,7 @@ export default function Calculator() {
   const onAutocompleteLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocomplete
     autocomplete.setComponentRestrictions({ country: 'pt' })
+    autocomplete.setFields(['formatted_address', 'geometry', 'place_id'])
   }, [])
 
   const onPlaceChanged = useCallback(() => {
@@ -99,6 +100,12 @@ export default function Calculator() {
 
         setFormData(prev => ({ ...prev, location: newLocation }))
 
+        // Update input value
+        if (inputRef.current && place.formatted_address) {
+          inputRef.current.value = place.formatted_address
+        }
+
+        // Pan map to location
         if (map) {
           map.panTo({ lat: newLocation.lat!, lng: newLocation.lng! })
           map.setZoom(19)
