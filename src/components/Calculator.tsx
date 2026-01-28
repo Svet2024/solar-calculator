@@ -1,8 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
+import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api'
 import CustomSelect from './CustomSelect'
+
+const libraries: ("places")[] = ['places']
 
 const roofOptions = [
   { value: 'inclinado', label: 'Inclinado', icon: '⛰️' },
@@ -15,9 +18,16 @@ const gridOptions = [
   { value: 'offgrid', label: 'Sem ligação à rede', icon: '🔋' },
 ]
 
+interface Location {
+  address: string
+  lat: number | null
+  lng: number | null
+  placeId?: string
+}
+
 interface FormData {
   // Step 1: House data
-  address: string
+  location: Location
   roofType: string
   electricityBill: number
   gridType: string
@@ -28,11 +38,20 @@ interface FormData {
   consent: boolean
 }
 
+const defaultCenter = { lat: 38.7223, lng: -9.1393 } // Lisboa
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '100%',
+  minHeight: '450px',
+  borderRadius: '12px',
+}
+
 export default function Calculator() {
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<FormData>({
-    address: '',
+    location: { address: '', lat: null, lng: null },
     roofType: 'inclinado',
     electricityBill: 150,
     gridType: 'monofasica',
@@ -42,14 +61,83 @@ export default function Calculator() {
     consent: false,
   })
 
+  const [map, setMap] = useState<google.maps.Map | null>(null)
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  })
+
   const billProgress = ((formData.electricityBill - 70) / (700 - 70)) * 100
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    setMap(map)
+  }, [])
+
+  const onAutocompleteLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete
+    autocomplete.setComponentRestrictions({ country: 'pt' })
+  }, [])
+
+  const onPlaceChanged = useCallback(() => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace()
+
+      if (place.geometry?.location) {
+        const newLocation: Location = {
+          address: place.formatted_address || '',
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          placeId: place.place_id,
+        }
+
+        setFormData(prev => ({ ...prev, location: newLocation }))
+
+        if (map) {
+          map.panTo({ lat: newLocation.lat!, lng: newLocation.lng! })
+          map.setZoom(19)
+        }
+      }
+    }
+  }, [map])
+
+  const onMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      const newLat = e.latLng.lat()
+      const newLng = e.latLng.lng()
+
+      const geocoder = new google.maps.Geocoder()
+      geocoder.geocode({ location: { lat: newLat, lng: newLng } }, (results, status) => {
+        if (status === 'OK' && results?.[0]) {
+          const newLocation: Location = {
+            address: results[0].formatted_address,
+            lat: newLat,
+            lng: newLng,
+            placeId: results[0].place_id,
+          }
+          setFormData(prev => ({ ...prev, location: newLocation }))
+
+          if (inputRef.current) {
+            inputRef.current.value = results[0].formatted_address
+          }
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            location: { ...prev.location, lat: newLat, lng: newLng }
+          }))
+        }
+      })
+    }
+  }, [])
+
   const handleStep1Next = () => {
-    if (!formData.address.trim()) {
+    if (!formData.location.address.trim()) {
       alert('Por favor, introduza o seu endereço')
       return
     }
@@ -68,15 +156,18 @@ export default function Calculator() {
 
     setIsSubmitting(true)
 
-    // Send to CRM
     try {
       const crmEndpoint = process.env.NEXT_PUBLIC_CRM_API_URL || '/api/leads'
       await fetch(crmEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          // Location data
+          address: formData.location.address,
+          lat: formData.location.lat,
+          lng: formData.location.lng,
+          placeId: formData.location.placeId,
           // House data
-          address: formData.address,
           roofType: formData.roofType,
           electricityBill: formData.electricityBill,
           gridType: formData.gridType,
@@ -91,7 +182,6 @@ export default function Calculator() {
       })
     } catch (error) {
       console.error('CRM Error:', error)
-      // Continue anyway - don't block user from seeing results
     }
 
     setIsSubmitting(false)
@@ -100,17 +190,69 @@ export default function Calculator() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left Panel - Hero Image */}
-      <div className="card flex flex-col items-center justify-center min-h-[500px] order-2 lg:order-1 overflow-hidden p-0">
-        <div className="relative w-full h-full min-h-[500px]">
-          <Image
-            src="/hero-solar.png.webp"
-            alt="Casa com painéis solares"
-            fill
-            className="object-contain p-6"
-            priority
-          />
-        </div>
+      {/* Left Panel - Map or Hero Image */}
+      <div className="card flex flex-col items-center justify-center min-h-[500px] order-2 lg:order-1 overflow-hidden p-4">
+        {step === 1 && isLoaded && !loadError ? (
+          <div className="relative w-full h-full min-h-[450px]">
+            <GoogleMap
+              mapContainerStyle={mapContainerStyle}
+              center={formData.location.lat
+                ? { lat: formData.location.lat, lng: formData.location.lng! }
+                : defaultCenter
+              }
+              zoom={formData.location.lat ? 19 : 10}
+              onLoad={onMapLoad}
+              options={{
+                streetViewControl: false,
+                mapTypeControl: false,
+                fullscreenControl: false,
+                zoomControl: true,
+                mapTypeId: 'satellite',
+              }}
+            >
+              {formData.location.lat && (
+                <Marker
+                  position={{ lat: formData.location.lat, lng: formData.location.lng! }}
+                  draggable={true}
+                  onDragEnd={onMarkerDragEnd}
+                />
+              )}
+            </GoogleMap>
+
+            {formData.location.lat && (
+              <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg text-xs text-solar-blue shadow">
+                <div className="font-medium mb-1">Arraste o marcador para ajustar</div>
+                <div className="text-gray-500">
+                  {formData.location.lat.toFixed(5)}, {formData.location.lng?.toFixed(5)}
+                </div>
+              </div>
+            )}
+
+            {!formData.location.lat && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="bg-white/90 backdrop-blur-sm px-4 py-3 rounded-lg text-center shadow">
+                  <div className="text-solar-blue font-medium">Introduza o seu endereço</div>
+                  <div className="text-gray-500 text-sm">para ver no mapa</div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : step === 1 && loadError ? (
+          <div className="text-center text-red-500 p-4">
+            <p>Erro ao carregar o mapa</p>
+            <p className="text-sm">Verifique a API key</p>
+          </div>
+        ) : (
+          <div className="relative w-full h-full min-h-[450px]">
+            <Image
+              src="/hero-solar.png.webp"
+              alt="Casa com painéis solares"
+              fill
+              className="object-contain p-4"
+              priority
+            />
+          </div>
+        )}
       </div>
 
       {/* Right Panel - Form */}
@@ -122,20 +264,38 @@ export default function Calculator() {
               SIMULE O SEU SISTEMA
             </h2>
 
-            {/* Address */}
+            {/* Address with Autocomplete */}
             <div className="mb-5">
               <label className="block text-sm font-semibold text-solar-blue mb-2">
                 Endereço completo:
               </label>
-              <input
-                type="text"
-                name="address"
-                autoComplete="street-address"
-                value={formData.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="Rua, número, cidade..."
-                className="w-full bg-solar-gray border-0 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
-              />
+              {isLoaded ? (
+                <Autocomplete
+                  onLoad={onAutocompleteLoad}
+                  onPlaceChanged={onPlaceChanged}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    name="address"
+                    defaultValue={formData.location.address}
+                    placeholder="Comece a escrever o seu endereço..."
+                    className="w-full bg-solar-gray border-0 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
+                  />
+                </Autocomplete>
+              ) : (
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.location.address}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    location: { ...prev.location, address: e.target.value }
+                  }))}
+                  placeholder="Rua, número, cidade..."
+                  className="w-full bg-solar-gray border-0 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
+                />
+              )}
             </div>
 
             {/* Roof Type */}
@@ -290,7 +450,19 @@ export default function Calculator() {
             <h2 className="text-xl font-bold text-solar-blue mb-2">Obrigado, {formData.name}!</h2>
             <p className="text-gray-600 mb-6">Step 3: Resultados do cálculo (em desenvolvimento)</p>
             <button
-              onClick={() => setStep(1)}
+              onClick={() => {
+                setStep(1)
+                setFormData({
+                  location: { address: '', lat: null, lng: null },
+                  roofType: 'inclinado',
+                  electricityBill: 150,
+                  gridType: 'monofasica',
+                  name: '',
+                  email: '',
+                  phone: '',
+                  consent: false,
+                })
+              }}
               className="text-solar-orange hover:underline"
             >
               ← Nova simulação
