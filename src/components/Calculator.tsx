@@ -82,13 +82,18 @@ export default function Calculator() {
 
   const onAutocompleteLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocomplete
-    autocomplete.setComponentRestrictions({ country: 'pt' })
-    autocomplete.setFields(['formatted_address', 'geometry', 'place_id'])
   }, [])
 
+  const autocompleteOptions = {
+    componentRestrictions: { country: 'pt' },
+    fields: ['formatted_address', 'geometry', 'place_id'],
+  }
+
   const onPlaceChanged = useCallback(() => {
+    console.log('onPlaceChanged called')
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace()
+      console.log('place:', place)
 
       if (place.geometry?.location) {
         const newLocation: Location = {
@@ -280,6 +285,7 @@ export default function Calculator() {
                 <Autocomplete
                   onLoad={onAutocompleteLoad}
                   onPlaceChanged={onPlaceChanged}
+                  options={autocompleteOptions}
                 >
                   <input
                     ref={inputRef}
