@@ -4,6 +4,9 @@ import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api'
 import CustomSelect from './CustomSelect'
+import PackageCarousel from './PackageCarousel'
+import InteractiveEquipment from './InteractiveEquipment'
+import { packages, Package } from '@/data/packages'
 
 const libraries: ("places")[] = ['places']
 
@@ -64,6 +67,10 @@ export default function Calculator() {
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Package selection state (Step 3)
+  const [currentPackageIndex, setCurrentPackageIndex] = useState(1) // Start with recommended (Standard)
+  const currentPackage = packages[currentPackageIndex]
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -200,6 +207,69 @@ export default function Calculator() {
     setStep(3)
   }
 
+  // Handle package selection and send to CRM
+  const handlePackageSelect = async (pkg: Package) => {
+    setIsSubmitting(true)
+
+    try {
+      const crmEndpoint = process.env.NEXT_PUBLIC_CRM_API_URL || '/api/leads'
+      await fetch(crmEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Location data
+          address: formData.location.address,
+          lat: formData.location.lat,
+          lng: formData.location.lng,
+          placeId: formData.location.placeId,
+          // House data
+          roofType: formData.roofType,
+          electricityBill: formData.electricityBill,
+          gridType: formData.gridType,
+          // Contact data
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          // Selected package
+          selectedPackage: {
+            id: pkg.id,
+            name: pkg.name,
+            price: pkg.price,
+            power: pkg.power,
+          },
+          // Metadata
+          source: 'solar-calculator',
+          stage: 'package-selected',
+          createdAt: new Date().toISOString(),
+        }),
+      })
+
+      // Show confirmation
+      alert(`Obrigado ${formData.name}! Entraremos em contacto em breve sobre o pacote ${pkg.name}.`)
+    } catch (error) {
+      console.error('CRM Error:', error)
+      alert('Pedido registado! Entraremos em contacto em breve.')
+    }
+
+    setIsSubmitting(false)
+  }
+
+  // Reset calculator
+  const handleReset = () => {
+    setStep(1)
+    setCurrentPackageIndex(1)
+    setFormData({
+      location: { address: '', lat: null, lng: null },
+      roofType: 'inclinado',
+      electricityBill: 150,
+      gridType: 'monofasica',
+      name: '',
+      email: '',
+      phone: '',
+      consent: false,
+    })
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left Panel - Map or Hero Image */}
@@ -254,6 +324,8 @@ export default function Calculator() {
             <p>Erro ao carregar o mapa</p>
             <p className="text-sm">Verifique a API key</p>
           </div>
+        ) : step === 3 ? (
+          <InteractiveEquipment currentPackage={currentPackage} />
         ) : (
           <div className="relative w-full h-full min-h-[450px]">
             <Image
@@ -452,34 +524,31 @@ export default function Calculator() {
           </>
         )}
 
-        {/* Step 3: Results */}
+        {/* Step 3: Results with Package Carousel */}
         {step === 3 && (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-solar-blue">
+                ESCOLHA O SEU PACOTE
+              </h2>
+              <button
+                onClick={handleReset}
+                className="text-sm text-gray-500 hover:text-solar-orange transition-colors"
+              >
+                Nova simulação
+              </button>
             </div>
-            <h2 className="text-xl font-bold text-solar-blue mb-2">Obrigado, {formData.name}!</h2>
-            <p className="text-gray-600 mb-6">Step 3: Resultados do cálculo (em desenvolvimento)</p>
-            <button
-              onClick={() => {
-                setStep(1)
-                setFormData({
-                  location: { address: '', lat: null, lng: null },
-                  roofType: 'inclinado',
-                  electricityBill: 150,
-                  gridType: 'monofasica',
-                  name: '',
-                  email: '',
-                  phone: '',
-                  consent: false,
-                })
-              }}
-              className="text-solar-orange hover:underline"
-            >
-              ← Nova simulação
-            </button>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Olá {formData.name}, com base na sua fatura de <span className="font-semibold">€{formData.electricityBill}/mês</span>, recomendamos:
+            </p>
+
+            <PackageCarousel
+              packages={packages}
+              currentIndex={currentPackageIndex}
+              onIndexChange={setCurrentPackageIndex}
+              onSelect={handlePackageSelect}
+            />
           </div>
         )}
       </div>
