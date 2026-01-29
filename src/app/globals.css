@@ -72,3 +72,47 @@ select:focus {
 .bg-gradient-radial {
   background: radial-gradient(circle at center, var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to));
 }
+
+/* Animated border glow - rotating light effect */
+@keyframes rotate-border {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animated-border {
+  position: relative;
+  background: white;
+  border-radius: 1rem;
+  padding: 2px;
+}
+
+.animated-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 1rem;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #F5A623 30deg,
+    #FFD700 60deg,
+    #FF8C00 90deg,
+    transparent 120deg,
+    transparent 360deg
+  );
+  animation: rotate-border 2s linear infinite;
+  z-index: -1;
+}
+
+.animated-border::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: white;
+  border-radius: calc(1rem - 2px);
+  z-index: -1;
+}

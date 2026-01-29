@@ -273,7 +273,7 @@ export default function Calculator() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left Panel - Map or Hero Image */}
-      <div className="card flex flex-col items-center justify-center min-h-[500px] order-2 lg:order-1 overflow-hidden p-4">
+      <div className="card flex flex-col items-center justify-center min-h-[600px] h-[650px] order-2 lg:order-1 overflow-hidden p-4">
         {step === 1 && isLoaded && !loadError ? (
           <div className="relative w-full h-full min-h-[450px]">
             <GoogleMap
@@ -340,7 +340,7 @@ export default function Calculator() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="card order-1 lg:order-2">
+      <div className="card order-1 lg:order-2 min-h-[600px] h-[650px] overflow-y-auto">
         {/* Step 1: House Data */}
         {step === 1 && (
           <>
@@ -526,10 +526,11 @@ export default function Calculator() {
 
         {/* Step 3: Results with Package Carousel */}
         {step === 3 && (
-          <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-solar-blue">
-                ESCOLHA O SEU PACOTE
+          <div className="flex flex-col h-full min-h-[650px]">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-lg font-bold text-solar-blue">
+                RESULTADO DA SIMULAÇÃO
               </h2>
               <button
                 onClick={handleReset}
@@ -539,15 +540,18 @@ export default function Calculator() {
               </button>
             </div>
 
-            <p className="text-sm text-gray-600 mb-4">
-              Olá {formData.name}, com base na sua fatura de <span className="font-semibold">€{formData.electricityBill}/mês</span>, recomendamos:
+            {/* Greeting */}
+            <p className="text-sm text-gray-600 mb-2">
+              Olá {formData.name}, com base na sua fatura de <span className="font-semibold text-solar-blue">€{formData.electricityBill}/mês</span>:
             </p>
 
+            {/* Package Carousel */}
             <PackageCarousel
               packages={packages}
               currentIndex={currentPackageIndex}
               onIndexChange={setCurrentPackageIndex}
               onSelect={handlePackageSelect}
+              electricityBill={formData.electricityBill}
             />
           </div>
         )}

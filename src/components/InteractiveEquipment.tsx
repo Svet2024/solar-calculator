@@ -24,74 +24,48 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
   }
 
   return (
-    <div className="relative w-full h-full min-h-[650px] rounded-xl overflow-hidden">
-      {/* Bottom to top gray gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-gray-100 via-gray-50 to-white" />
+    <div className="relative w-full h-full min-h-[600px] rounded-xl overflow-hidden">
+      {/* Single combined equipment image */}
+      <div className="relative w-full h-full flex items-center justify-center">
+        <Image
+          src="/equipment/All-together.jpg"
+          alt="Equipamento solar"
+          width={600}
+          height={480}
+          className="object-contain"
+        />
 
-      {/* Equipment display - center composition, moved up */}
-      <div className="absolute inset-0 flex items-start justify-center pt-4">
+        {/* Button for left equipment (small inverter) */}
+        <button
+          onClick={() => openModal('inverter')}
+          className="absolute z-30 w-10 h-10 bg-solar-orange rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg border-2 border-white"
+          style={{ left: '28%', top: '48%' }}
+        >
+          <span className="absolute w-full h-full bg-solar-orange rounded-full animate-ping opacity-40" />
+          <span className="relative text-white text-sm font-bold">i</span>
+        </button>
 
-        {/* Solar Panel - Center, VERY LARGE */}
-        <div className="relative">
-          {/* Pulsing button for panel - on right side */}
+        {/* Button for center tall battery */}
+        {hasBattery && (
           <button
-            onClick={() => openModal('panel')}
-            className="absolute top-1/4 -right-5 z-30 w-10 h-10 bg-solar-orange rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg border-2 border-white"
+            onClick={() => openModal('battery')}
+            className="absolute z-30 w-10 h-10 bg-solar-orange rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg border-2 border-white"
+            style={{ left: '44%', top: '22%' }}
           >
             <span className="absolute w-full h-full bg-solar-orange rounded-full animate-ping opacity-40" />
             <span className="relative text-white text-sm font-bold">i</span>
           </button>
-
-          <Image
-            src={currentPackage.equipment.panels.image}
-            alt="Painel Solar"
-            width={420}
-            height={580}
-            className="object-contain"
-          />
-        </div>
-
-        {/* Battery - Left, just below panel */}
-        {hasBattery && currentPackage.equipment.battery && (
-          <div className="absolute left-4 top-[45%] z-10">
-            {/* Pulsing button - on left side */}
-            <button
-              onClick={() => openModal('battery')}
-              className="absolute top-1/3 -left-5 z-30 w-10 h-10 bg-solar-orange rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg border-2 border-white"
-            >
-              <span className="absolute w-full h-full bg-solar-orange rounded-full animate-ping opacity-40" />
-              <span className="relative text-white text-sm font-bold">i</span>
-            </button>
-
-            <Image
-              src={currentPackage.equipment.battery.image}
-              alt="Bateria"
-              width={260}
-              height={380}
-              className="object-contain"
-            />
-          </div>
         )}
 
-        {/* Inverter - Right, just below panel */}
-        <div className={`absolute top-[50%] z-10 ${hasBattery ? 'right-4' : 'right-8'}`}>
-          {/* Pulsing button - on right side */}
-          <button
-            onClick={() => openModal('inverter')}
-            className="absolute top-1/3 -right-5 z-30 w-10 h-10 bg-solar-orange rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg border-2 border-white"
-          >
-            <span className="absolute w-full h-full bg-solar-orange rounded-full animate-ping opacity-40" />
-            <span className="relative text-white text-sm font-bold">i</span>
-          </button>
-
-          <Image
-            src={currentPackage.equipment.inverter.image}
-            alt="Inversor"
-            width={240}
-            height={300}
-            className="object-contain"
-          />
-        </div>
+        {/* Button for right equipment */}
+        <button
+          onClick={() => openModal('panel')}
+          className="absolute z-30 w-10 h-10 bg-solar-orange rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg border-2 border-white"
+          style={{ left: '62%', top: '38%' }}
+        >
+          <span className="absolute w-full h-full bg-solar-orange rounded-full animate-ping opacity-40" />
+          <span className="relative text-white text-sm font-bold">i</span>
+        </button>
       </div>
 
       {/* Hint text */}
