@@ -478,10 +478,10 @@ export default function PackageCarousel({
         })()}
       </div>
 
-      {/* Price and CTA */}
-      <div className="mt-auto">
+      {/* Price and CTA - Sticky decision zone */}
+      <div className="mt-auto pt-3 sticky bottom-0 bg-white pb-2">
         <div className="text-center mb-2">
-          <div className="text-xs text-gray-500 mb-1">Sob chave</div>
+          <div className="text-xs text-gray-500 mb-0.5">Sob chave</div>
           <span className="text-4xl font-bold text-solar-orange">
             €{currentPackage.price.toLocaleString()}
           </span>
@@ -493,6 +493,9 @@ export default function PackageCarousel({
         >
           Pedir orçamento
         </button>
+        <p className="text-center text-[11px] text-gray-400 mt-2">
+          Sem compromisso. Contacto em 24h.
+        </p>
       </div>
 
     </div>

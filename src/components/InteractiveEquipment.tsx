@@ -94,10 +94,11 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
           </h4>
           <div className="space-y-2">
             {/* Panels */}
-            <div
+            <button
+              onClick={() => openModal('panel')}
               onMouseEnter={() => setHoveredItem('panel')}
               onMouseLeave={() => setHoveredItem(null)}
-              className={`w-full p-3 rounded-lg border transition-all ${
+              className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left ${
                 hoveredItem === 'panel'
                   ? 'border-solar-blue bg-blue-50/50 shadow-sm'
                   : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
@@ -114,12 +115,6 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-semibold text-solar-blue">Painéis Solares</span>
-                    <button
-                      onClick={() => openModal('panel')}
-                      className="text-[10px] text-solar-orange hover:underline font-medium"
-                    >
-                      Ver detalhes
-                    </button>
                   </div>
                   <div className="text-xs text-gray-500 mb-1.5">
                     {currentPackage.equipment.panels.brand} {currentPackage.equipment.panels.model}
@@ -136,14 +131,18 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </span>
                   </div>
                 </div>
+                <svg className={`w-5 h-5 flex-shrink-0 transition-colors ${hoveredItem === 'panel' ? 'text-solar-blue' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
-            </div>
+            </button>
 
             {/* Inverter */}
-            <div
+            <button
+              onClick={() => openModal('inverter')}
               onMouseEnter={() => setHoveredItem('inverter')}
               onMouseLeave={() => setHoveredItem(null)}
-              className={`w-full p-3 rounded-lg border transition-all ${
+              className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left ${
                 hoveredItem === 'inverter'
                   ? 'border-solar-blue bg-blue-50/50 shadow-sm'
                   : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
@@ -160,12 +159,6 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-semibold text-solar-blue">Inversor Híbrido</span>
-                    <button
-                      onClick={() => openModal('inverter')}
-                      className="text-[10px] text-solar-orange hover:underline font-medium"
-                    >
-                      Ver detalhes
-                    </button>
                   </div>
                   <div className="text-xs text-gray-500 mb-1.5">
                     {currentPackage.equipment.inverter.brand} {currentPackage.equipment.inverter.model}
@@ -182,15 +175,19 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </span>
                   </div>
                 </div>
+                <svg className={`w-5 h-5 flex-shrink-0 transition-colors ${hoveredItem === 'inverter' ? 'text-solar-blue' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
-            </div>
+            </button>
 
             {/* Battery */}
             {hasBattery && currentPackage.equipment.battery && (
-              <div
+              <button
+                onClick={() => openModal('battery')}
                 onMouseEnter={() => setHoveredItem('battery')}
                 onMouseLeave={() => setHoveredItem(null)}
-                className={`w-full p-3 rounded-lg border transition-all ${
+                className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left ${
                   hoveredItem === 'battery'
                     ? 'border-solar-blue bg-blue-50/50 shadow-sm'
                     : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
@@ -207,12 +204,6 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-semibold text-solar-blue">Bateria de Armazenamento</span>
-                      <button
-                        onClick={() => openModal('battery')}
-                        className="text-[10px] text-solar-orange hover:underline font-medium"
-                      >
-                        Ver detalhes
-                      </button>
                     </div>
                     <div className="text-xs text-gray-500 mb-1.5">
                       {currentPackage.equipment.battery.brand} {currentPackage.equipment.battery.model}
@@ -229,8 +220,11 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                       </span>
                     </div>
                   </div>
+                  <svg className={`w-5 h-5 flex-shrink-0 transition-colors ${hoveredItem === 'battery' ? 'text-solar-blue' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
-              </div>
+              </button>
             )}
           </div>
         </div>
