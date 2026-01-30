@@ -288,7 +288,7 @@ export default function PackageCarousel({
                 <svg className="w-3 h-3 text-solar-orange" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" />
                 </svg>
-                Cobertura
+                Autoconsumo
               </div>
             </div>
           </div>
@@ -481,7 +481,7 @@ export default function PackageCarousel({
       {/* Price and CTA - Sticky decision zone */}
       <div className="mt-auto pt-3 sticky bottom-0 bg-white pb-2">
         <div className="text-center mb-2">
-          <div className="text-xs text-gray-500 mb-0.5">Sob chave</div>
+          <div className="text-xs text-gray-500 mb-0.5">Sistema «chave na mão»</div>
           <span className="text-4xl font-bold text-solar-orange">
             €{currentPackage.price.toLocaleString()}
           </span>
@@ -491,7 +491,7 @@ export default function PackageCarousel({
           onClick={() => onSelect(currentPackage)}
           className="w-full bg-solar-orange hover:bg-solar-orange-hover text-white font-bold py-3.5 px-6 rounded-full transition-all hover:scale-[1.02] hover:shadow-lg text-lg"
         >
-          Pedir orçamento
+          Receber uma proposta
         </button>
         <p className="text-center text-[11px] text-gray-400 mt-2">
           Sem compromisso. Contacto em 24h.

@@ -65,6 +65,7 @@ export default function Calculator() {
   })
 
   const [map, setMap] = useState<google.maps.Map | null>(null)
+  const [isLocating, setIsLocating] = useState(false)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -86,6 +87,86 @@ export default function Calculator() {
   const onMapLoad = useCallback((map: google.maps.Map) => {
     setMap(map)
   }, [])
+
+  // Geolocation - get user's current position
+  const handleGetLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert('Geolocalização não é suportada pelo seu navegador')
+      return
+    }
+
+    setIsLocating(true)
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords
+
+        // Update location in form
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            address: 'A carregar endereço...',
+            lat: latitude,
+            lng: longitude,
+          }
+        }))
+
+        // Pan map to location
+        if (map) {
+          map.panTo({ lat: latitude, lng: longitude })
+          map.setZoom(19)
+        }
+
+        // Reverse geocode to get address
+        if (isLoaded) {
+          const geocoder = new google.maps.Geocoder()
+          try {
+            const response = await geocoder.geocode({ location: { lat: latitude, lng: longitude } })
+            if (response.results[0]) {
+              setFormData(prev => ({
+                ...prev,
+                location: {
+                  address: response.results[0].formatted_address,
+                  lat: latitude,
+                  lng: longitude,
+                  placeId: response.results[0].place_id,
+                }
+              }))
+              // Update input field
+              if (inputRef.current) {
+                inputRef.current.value = response.results[0].formatted_address
+              }
+            }
+          } catch (error) {
+            console.error('Geocoding error:', error)
+          }
+        }
+
+        setIsLocating(false)
+      },
+      (error) => {
+        setIsLocating(false)
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            alert('Permissão de localização negada. Por favor, ative nas configurações do navegador.')
+            break
+          case error.POSITION_UNAVAILABLE:
+            alert('Informação de localização não disponível.')
+            break
+          case error.TIMEOUT:
+            alert('Tempo esgotado ao obter localização.')
+            break
+          default:
+            alert('Erro ao obter localização.')
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    )
+  }, [map, isLoaded])
 
   const onAutocompleteLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocomplete
@@ -300,6 +381,26 @@ export default function Calculator() {
                 />
               )}
             </GoogleMap>
+
+            {/* Geolocation button */}
+            <button
+              onClick={handleGetLocation}
+              disabled={isLocating}
+              className="absolute top-4 right-4 bg-white hover:bg-gray-50 text-solar-blue p-3 rounded-lg shadow-md transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-wait"
+              title="Usar a minha localização"
+            >
+              {isLocating ? (
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            </button>
 
             {formData.location.lat && (
               <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg text-xs text-solar-blue shadow">
