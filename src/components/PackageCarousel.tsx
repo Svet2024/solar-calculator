@@ -1,14 +1,55 @@
 'use client'
 
-import { useState, useCallback, useRef, TouchEvent, useEffect } from 'react'
-import { Package } from '@/data/packages'
+import { useState, useCallback, useRef, TouchEvent, useEffect, useMemo } from 'react'
+import {
+  type GridType,
+  type RoofType,
+  type BrandType,
+  type HuaweiPackageConfig,
+  type DeyePackageConfig,
+  getAvailableDeyePackages,
+  getAvailableHuaweiPackages,
+  getDeyePrice,
+  getHuaweiPrice,
+  findRecommendedIndex,
+  calculatePower,
+  calculateMonthlyProduction,
+  calculateMonthlySavings,
+  calculatePaybackYears,
+  getMonthlyProductionArray,
+} from '@/data/packages'
+import { panels, getDeyeInverter, getHuaweiInverter, getDeyeBattery, huaweiBattery } from '@/data/equipment'
+
+// Current package info for equipment display
+export interface CurrentPackageInfo {
+  panelCount: number
+  inverterKw: number
+  batteryKwh: number | null
+}
 
 interface PackageCarouselProps {
-  packages: Package[]
   currentIndex: number
   onIndexChange: (index: number) => void
-  onSelect: (pkg: Package) => void
+  onSelect: (pkg: SelectedPackage) => void
+  onCurrentPackageChange: (info: CurrentPackageInfo) => void
   electricityBill: number
+  gridType: GridType
+  roofType: RoofType
+  selectedBrand: BrandType
+  onBrandChange: (brand: BrandType) => void
+  hasBattery: boolean
+  onBatteryChange: (hasBattery: boolean) => void
+}
+
+// Package data sent to CRM
+export interface SelectedPackage {
+  id: string
+  brand: BrandType
+  panelCount: number
+  price: number
+  power: number
+  hasBattery: boolean
+  batteryCapacity: string | null
 }
 
 interface DeltaValues {
@@ -19,11 +60,17 @@ interface DeltaValues {
 }
 
 export default function PackageCarousel({
-  packages,
   currentIndex,
   onIndexChange,
   onSelect,
+  onCurrentPackageChange,
   electricityBill,
+  gridType,
+  roofType,
+  selectedBrand,
+  onBrandChange,
+  hasBattery,
+  onBatteryChange,
 }: PackageCarouselProps) {
   const touchStartX = useRef<number>(0)
   const touchEndX = useRef<number>(0)
@@ -39,15 +86,69 @@ export default function PackageCarousel({
   const prevIndexRef = useRef<number>(currentIndex)
   const prevValuesRef = useRef<{ savings: number; coverage: number; production: number; payback: number } | null>(null)
 
-  const currentPackage = packages[currentIndex]
+  // Get available packages based on brand, grid type, and roof type
+  // Reorder so recommended package is first
+  const availablePackages = useMemo(() => {
+    const packages = selectedBrand === 'deye'
+      ? getAvailableDeyePackages(gridType, roofType)
+      : getAvailableHuaweiPackages(gridType, roofType, hasBattery)
+
+    // Find recommended index in original array
+    const recIdx = findRecommendedIndex(packages, electricityBill)
+
+    // Reorder: recommended first, then others
+    if (recIdx > 0 && recIdx < packages.length) {
+      const recommended = packages[recIdx]
+      const before = packages.slice(0, recIdx)
+      const after = packages.slice(recIdx + 1)
+      return [recommended, ...before, ...after]
+    }
+    return packages
+  }, [selectedBrand, gridType, roofType, hasBattery, electricityBill])
+
+  // Ensure currentIndex is valid
+  useEffect(() => {
+    if (currentIndex >= availablePackages.length) {
+      onIndexChange(Math.max(0, availablePackages.length - 1))
+    }
+  }, [availablePackages.length, currentIndex, onIndexChange])
+
+  // Get current package
+  const currentPackage = availablePackages[currentIndex] || availablePackages[0]
+  if (!currentPackage) return null
+
+  // Calculate price based on brand
+  const price = selectedBrand === 'deye'
+    ? getDeyePrice(currentPackage as DeyePackageConfig, gridType, roofType) || 0
+    : getHuaweiPrice(currentPackage as HuaweiPackageConfig, gridType, roofType, hasBattery) || 0
 
   // Calculate values based on package
-  const monthlySavings = currentPackage.monthlySavings
+  const powerKwp = calculatePower(currentPackage.panelCount)
+  const monthlyProduction = calculateMonthlyProduction(currentPackage.panelCount)
+  const monthlySavings = calculateMonthlySavings(monthlyProduction)
   const yearlySavings = monthlySavings * 12
-  const paybackYears = currentPackage.paybackYears
+  const paybackYears = calculatePaybackYears(price, monthlySavings)
   const coveragePercent = Math.min(Math.round((monthlySavings / electricityBill) * 100), 100)
-  const monthlyProduction = Math.round(currentPackage.power * 1400 / 12) // kWh/month estimate
-  const batteryCapacity = currentPackage.equipment.battery?.capacity || 'Sem bateria'
+
+  // Get battery info
+  const getBatteryCapacity = () => {
+    if (selectedBrand === 'deye') {
+      const deyePkg = currentPackage as DeyePackageConfig
+      return `${deyePkg.batteryKwh} kWh`
+    } else if (hasBattery) {
+      return huaweiBattery.capacity
+    }
+    return null
+  }
+  const batteryCapacity = getBatteryCapacity()
+
+  // Get panel info
+  const panelInfo = panels[roofType]
+
+  // Get inverter info
+  const inverterInfo = selectedBrand === 'deye'
+    ? getDeyeInverter(currentPackage.inverterKw)
+    : getHuaweiInverter(currentPackage.inverterKw)
 
   // Calculate and show deltas when package changes
   useEffect(() => {
@@ -62,7 +163,6 @@ export default function PackageCarousel({
       setDeltas(newDeltas)
       setShowDeltas(true)
 
-      // Highlight changed fields
       const changedFields = new Set<string>()
       if (newDeltas.savings !== 0) changedFields.add('savings')
       if (newDeltas.coverage !== 0) changedFields.add('coverage')
@@ -70,7 +170,6 @@ export default function PackageCarousel({
       if (newDeltas.payback !== 0) changedFields.add('payback')
       setHighlightedFields(changedFields)
 
-      // Hide deltas after 600ms
       const timer = setTimeout(() => {
         setShowDeltas(false)
         setHighlightedFields(new Set())
@@ -90,6 +189,19 @@ export default function PackageCarousel({
     }
     prevIndexRef.current = currentIndex
   }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction, paybackYears])
+
+  // Notify parent of current package info for equipment display
+  useEffect(() => {
+    const batteryKwh = selectedBrand === 'deye'
+      ? (currentPackage as DeyePackageConfig).batteryKwh
+      : hasBattery ? 7 : null
+
+    onCurrentPackageChange({
+      panelCount: currentPackage.panelCount,
+      inverterKw: currentPackage.inverterKw,
+      batteryKwh,
+    })
+  }, [currentPackage, selectedBrand, hasBattery, onCurrentPackageChange])
 
   // Animate values on package change
   useEffect(() => {
@@ -115,7 +227,7 @@ export default function PackageCarousel({
     }, interval)
 
     return () => clearInterval(timer)
-  }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction])
+  }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction, selectedBrand, hasBattery])
 
   // Helper to format delta
   const formatDelta = (value: number, suffix: string = '') => {
@@ -125,14 +237,14 @@ export default function PackageCarousel({
   }
 
   const goToPrevious = useCallback(() => {
-    const newIndex = currentIndex === 0 ? packages.length - 1 : currentIndex - 1
+    const newIndex = currentIndex === 0 ? availablePackages.length - 1 : currentIndex - 1
     onIndexChange(newIndex)
-  }, [currentIndex, packages.length, onIndexChange])
+  }, [currentIndex, availablePackages.length, onIndexChange])
 
   const goToNext = useCallback(() => {
-    const newIndex = currentIndex === packages.length - 1 ? 0 : currentIndex + 1
+    const newIndex = currentIndex === availablePackages.length - 1 ? 0 : currentIndex + 1
     onIndexChange(newIndex)
-  }, [currentIndex, packages.length, onIndexChange])
+  }, [currentIndex, availablePackages.length, onIndexChange])
 
   const handleTouchStart = (e: TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
@@ -155,14 +267,22 @@ export default function PackageCarousel({
     }
   }
 
-  // Get brand names for display
-  const getBrands = () => {
-    const brands = [currentPackage.equipment.inverter.brand]
-    if (currentPackage.equipment.battery) {
-      brands.push(currentPackage.equipment.battery.brand)
-    }
-    return brands.join(' + ')
+  // Handle package selection
+  const handleSelect = () => {
+    onSelect({
+      id: currentPackage.id,
+      brand: selectedBrand,
+      panelCount: currentPackage.panelCount,
+      price,
+      power: powerKwp,
+      hasBattery: selectedBrand === 'deye' ? true : hasBattery,
+      batteryCapacity,
+    })
   }
+
+  // Find recommended index for current bill
+  // Recommended is always first after reordering
+  const recommendedIndex = 0
 
   return (
     <div
@@ -171,6 +291,81 @@ export default function PackageCarousel({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Brand Selection */}
+      <div className="mb-3">
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          Escolha a marca do equipamento
+        </label>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onBrandChange('deye')}
+            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all border-2 ${
+              selectedBrand === 'deye'
+                ? 'bg-solar-orange text-white border-solar-orange shadow-md'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <span className="flex items-center justify-center gap-1.5">
+              Deye
+              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                selectedBrand === 'deye' ? 'bg-white/20' : 'bg-solar-orange/10 text-solar-orange'
+              }`}>
+                Recomendado
+              </span>
+            </span>
+          </button>
+          <button
+            onClick={() => onBrandChange('huawei')}
+            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all border-2 ${
+              selectedBrand === 'huawei'
+                ? 'bg-solar-blue text-white border-solar-blue shadow-md'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Huawei
+          </button>
+        </div>
+      </div>
+
+      {/* Battery Option (only for Huawei) */}
+      {selectedBrand === 'huawei' && (
+        <div className="mb-3">
+          <button
+            onClick={() => onBatteryChange(!hasBattery)}
+            className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+              hasBattery
+                ? 'bg-green-50 border-green-400 text-green-700'
+                : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                hasBattery ? 'bg-green-500' : 'bg-gray-300'
+              }`}>
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.5a1 1 0 00-.5.13V4a1 1 0 00-1-1h-2a1 1 0 00-1 1v.13A1 1 0 009.5 4H4zm8 6a1 1 0 01-1 1H6a1 1 0 110-2h5a1 1 0 011 1z" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-semibold">
+                  {hasBattery ? 'Com bateria incluída' : 'Sem bateria'}
+                </div>
+                <div className="text-xs opacity-75">
+                  {hasBattery ? 'Huawei Luna 7 kWh' : 'Clique para adicionar'}
+                </div>
+              </div>
+            </div>
+            <div className={`w-10 h-6 rounded-full p-1 transition-colors ${
+              hasBattery ? 'bg-green-500' : 'bg-gray-300'
+            }`}>
+              <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                hasBattery ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </div>
+          </button>
+        </div>
+      )}
+
       {/* Header with navigation */}
       <div className="flex items-center justify-between mb-2">
         <button
@@ -185,12 +380,12 @@ export default function PackageCarousel({
 
         <div className="text-center flex-1">
           <h3 className="text-2xl font-bold text-solar-blue">
-            {currentPackage.name}
+            {currentPackage.panelCount} Painéis
           </h3>
           <p className="text-sm text-gray-500">
-            {getBrands()}
+            {panelInfo.brand} {panelInfo.wattage}W + {inverterInfo.brand}
           </p>
-          {currentPackage.recommended && (
+          {currentIndex === recommendedIndex && (
             <span className="inline-block mt-1 px-3 py-1 bg-solar-orange text-white text-xs font-bold rounded-full">
               Recomendado
             </span>
@@ -210,7 +405,7 @@ export default function PackageCarousel({
 
       {/* Dot indicators */}
       <div className="flex justify-center gap-2 mb-3">
-        {packages.map((_, index) => (
+        {availablePackages.map((_, index) => (
           <button
             key={index}
             onClick={() => onIndexChange(index)}
@@ -304,25 +499,25 @@ export default function PackageCarousel({
               <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" />
             </svg>
           </div>
-          <div className="text-lg font-bold text-solar-blue">{currentPackage.power} kWp</div>
+          <div className="text-lg font-bold text-solar-blue">{powerKwp.toFixed(1)} kWp</div>
           <div className="text-[10px] text-gray-500">Potência instalada</div>
         </div>
 
         {/* Battery */}
         <div className={`rounded-lg p-2.5 text-center hover:shadow-md transition-shadow cursor-default group ${
-          currentPackage.equipment.battery
+          batteryCapacity
             ? 'bg-gradient-to-br from-green-50 to-green-100'
             : 'bg-gradient-to-br from-gray-50 to-gray-100'
         }`}>
           <div className={`w-8 h-8 mx-auto mb-1 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform ${
-            currentPackage.equipment.battery ? 'bg-green-600' : 'bg-gray-400'
+            batteryCapacity ? 'bg-green-600' : 'bg-gray-400'
           }`}>
             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.5a1 1 0 00-.5.13V4a1 1 0 00-1-1h-2a1 1 0 00-1 1v.13A1 1 0 009.5 4H4zm8 6a1 1 0 01-1 1H6a1 1 0 110-2h5a1 1 0 011 1z" />
             </svg>
           </div>
-          <div className={`text-lg font-bold ${currentPackage.equipment.battery ? 'text-green-600' : 'text-gray-400'}`}>
-            {batteryCapacity}
+          <div className={`text-lg font-bold ${batteryCapacity ? 'text-green-600' : 'text-gray-400'}`}>
+            {batteryCapacity || 'Sem bateria'}
           </div>
           <div className="text-[10px] text-gray-500">Armazenamento</div>
         </div>
@@ -363,29 +558,25 @@ export default function PackageCarousel({
         {/* Chart */}
         {(() => {
           const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-          // Production: peak in summer (Jun-Aug), based on panel count
-          const productionFactors = [0.50, 0.60, 0.75, 0.90, 1.00, 1.12, 1.18, 1.12, 0.92, 0.72, 0.55, 0.45]
-          // Consumption: based on electricity bill, peak in winter (Dec-Feb)
+          // Consumption varies seasonally (higher in winter for heating, lower in summer)
           const consumptionFactors = [1.20, 1.15, 1.00, 0.85, 0.72, 0.65, 0.60, 0.65, 0.75, 0.88, 1.05, 1.25]
 
-          // Consumption from electricity bill (€ to kWh estimate)
-          const baseConsumption = electricityBill * 2
-          const consumptions = consumptionFactors.map(f => Math.round(baseConsumption * f))
+          // Get monthly production based on panel count (real Portugal data)
+          const productions = getMonthlyProductionArray(currentPackage.panelCount)
 
-          // Production from panels (kWp * sun hours factor)
-          const productions = productionFactors.map(f => Math.round(monthlyProduction * f))
+          // Estimate monthly consumption from bill (€0.24/kWh average)
+          const avgMonthlyConsumption = Math.round(electricityBill / 0.24)
+          const consumptions = consumptionFactors.map(f => Math.round(avgMonthlyConsumption * f))
 
           const maxValue = Math.max(...productions, ...consumptions) * 1.15
           const chartHeight = 120
 
-          // Create SVG path for smooth consumption curve
           const points = consumptions.map((c, i) => {
             const x = (i / (consumptions.length - 1)) * 100
             const y = chartHeight - (c / maxValue) * chartHeight
             return { x, y, value: c }
           })
 
-          // Smooth bezier curve
           let pathD = `M 0 ${chartHeight} L 0 ${points[0].y}`
           for (let i = 0; i < points.length - 1; i++) {
             const cp1x = points[i].x + (points[i + 1].x - points[i].x) / 3
@@ -396,7 +587,7 @@ export default function PackageCarousel({
 
           return (
             <div className="relative" style={{ height: '160px' }}>
-              {/* Consumption area (smooth curve in background) */}
+              {/* Consumption area */}
               <svg
                 className="absolute top-0 left-0 w-full"
                 style={{ height: `${chartHeight}px` }}
@@ -418,7 +609,7 @@ export default function PackageCarousel({
                 />
               </svg>
 
-              {/* Production bars (foreground) */}
+              {/* Production bars */}
               <div
                 className="absolute top-0 left-0 right-0 flex items-end justify-between gap-1 px-1"
                 style={{ height: `${chartHeight}px` }}
@@ -437,15 +628,12 @@ export default function PackageCarousel({
                       onMouseEnter={() => setHoveredMonth(index)}
                       onMouseLeave={() => setHoveredMonth(null)}
                     >
-                      {/* Tooltip on hover */}
                       {isHovered && (
                         <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-solar-blue text-white text-[9px] px-2 py-1 rounded shadow-lg z-30 whitespace-nowrap">
                           <div>Geração: {production} kWh</div>
                           <div>Consumo: {consumption} kWh</div>
                         </div>
                       )}
-
-                      {/* Production bar */}
                       <div
                         className={`w-[75%] rounded-t-sm transition-all duration-200 ${
                           isHovered ? 'bg-solar-blue' : 'bg-solar-blue/80'
@@ -478,17 +666,17 @@ export default function PackageCarousel({
         })()}
       </div>
 
-      {/* Price and CTA - Sticky decision zone */}
+      {/* Price and CTA */}
       <div className="mt-auto pt-3 sticky bottom-0 bg-white pb-2">
         <div className="text-center mb-2">
           <div className="text-xs text-gray-500 mb-0.5">Sistema «chave na mão»</div>
           <span className="text-4xl font-bold text-solar-orange">
-            €{currentPackage.price.toLocaleString()}
+            €{price.toLocaleString()}
           </span>
           <span className="text-sm text-gray-400 ml-2">(IVA incluído)</span>
         </div>
         <button
-          onClick={() => onSelect(currentPackage)}
+          onClick={handleSelect}
           className="w-full bg-solar-orange hover:bg-solar-orange-hover text-white font-bold py-3.5 px-6 rounded-full transition-all hover:scale-[1.02] hover:shadow-lg text-lg"
         >
           Receber uma proposta
@@ -497,7 +685,6 @@ export default function PackageCarousel({
           Sem compromisso. Contacto em 24h.
         </p>
       </div>
-
     </div>
   )
 }

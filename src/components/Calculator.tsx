@@ -4,21 +4,24 @@ import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api'
 import CustomSelect from './CustomSelect'
-import PackageCarousel from './PackageCarousel'
+import PackageCarousel, { type SelectedPackage, type CurrentPackageInfo } from './PackageCarousel'
 import InteractiveEquipment from './InteractiveEquipment'
-import { packages, Package } from '@/data/packages'
+import {
+  type GridType,
+  type RoofType,
+  type BrandType,
+} from '@/data/packages'
 
 const libraries: ("places")[] = ['places']
 
 const roofOptions = [
-  { value: 'inclinado', label: 'Inclinado', icon: '⛰️' },
-  { value: 'plano', label: 'Plano', icon: '➖' },
+  { value: 'inclinada', label: 'Inclinado', icon: '⛰️' },
+  { value: 'plana', label: 'Plano', icon: '➖' },
 ]
 
 const gridOptions = [
   { value: 'monofasica', label: 'Monofásica', icon: '🔌' },
   { value: 'trifasica', label: 'Trifásica', icon: '⚡' },
-  { value: 'offgrid', label: 'Sem ligação à rede', icon: '🔋' },
 ]
 
 interface Location {
@@ -31,9 +34,9 @@ interface Location {
 interface FormData {
   // Step 1: House data
   location: Location
-  roofType: string
+  roofType: RoofType
   electricityBill: number
-  gridType: string
+  gridType: GridType
   // Step 2: Contact data
   name: string
   email: string
@@ -55,7 +58,7 @@ export default function Calculator() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<FormData>({
     location: { address: '', lat: null, lng: null },
-    roofType: 'inclinado',
+    roofType: 'inclinada',
     electricityBill: 150,
     gridType: 'monofasica',
     name: '',
@@ -64,14 +67,19 @@ export default function Calculator() {
     consent: false,
   })
 
+  // Brand selection state (Step 3)
+  const [selectedBrand, setSelectedBrand] = useState<BrandType>('deye')
+  const [hasBattery, setHasBattery] = useState(true)
+
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Package selection state (Step 3)
-  const [currentPackageIndex, setCurrentPackageIndex] = useState(1) // Start with recommended (Standard)
-  const currentPackage = packages[currentPackageIndex]
+  const [currentPackageIndex, setCurrentPackageIndex] = useState(0)
+  const [selectedPackage, setSelectedPackage] = useState<SelectedPackage | null>(null)
+  const [currentPackageInfo, setCurrentPackageInfo] = useState<CurrentPackageInfo | null>(null)
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -289,7 +297,8 @@ export default function Calculator() {
   }
 
   // Handle package selection and send to CRM
-  const handlePackageSelect = async (pkg: Package) => {
+  const handlePackageSelect = async (pkg: SelectedPackage) => {
+    setSelectedPackage(pkg)
     setIsSubmitting(true)
 
     try {
@@ -314,9 +323,12 @@ export default function Calculator() {
           // Selected package
           selectedPackage: {
             id: pkg.id,
-            name: pkg.name,
+            brand: pkg.brand,
+            panelCount: pkg.panelCount,
             price: pkg.price,
             power: pkg.power,
+            hasBattery: pkg.hasBattery,
+            batteryCapacity: pkg.batteryCapacity,
           },
           // Metadata
           source: 'solar-calculator',
@@ -326,7 +338,7 @@ export default function Calculator() {
       })
 
       // Show confirmation
-      alert(`Obrigado ${formData.name}! Entraremos em contacto em breve sobre o pacote ${pkg.name}.`)
+      alert(`Obrigado ${formData.name}! Entraremos em contacto em breve sobre o sistema de ${pkg.panelCount} painéis.`)
     } catch (error) {
       console.error('CRM Error:', error)
       alert('Pedido registado! Entraremos em contacto em breve.')
@@ -338,10 +350,12 @@ export default function Calculator() {
   // Reset calculator
   const handleReset = () => {
     setStep(1)
-    setCurrentPackageIndex(1)
+    setCurrentPackageIndex(0)
+    setSelectedBrand('deye')
+    setHasBattery(true)
     setFormData({
       location: { address: '', lat: null, lng: null },
-      roofType: 'inclinado',
+      roofType: 'inclinada',
       electricityBill: 150,
       gridType: 'monofasica',
       name: '',
@@ -425,8 +439,16 @@ export default function Calculator() {
             <p>Erro ao carregar o mapa</p>
             <p className="text-sm">Verifique a API key</p>
           </div>
-        ) : step === 3 ? (
-          <InteractiveEquipment currentPackage={currentPackage} />
+        ) : step === 3 && currentPackageInfo ? (
+          <InteractiveEquipment
+            panelCount={currentPackageInfo.panelCount}
+            inverterKw={currentPackageInfo.inverterKw}
+            brand={selectedBrand}
+            roofType={formData.roofType}
+            gridType={formData.gridType}
+            hasBattery={selectedBrand === 'deye' || hasBattery}
+            batteryKwh={currentPackageInfo.batteryKwh ?? undefined}
+          />
         ) : (
           <div className="relative w-full h-full min-h-[450px]">
             <Image
@@ -648,11 +670,17 @@ export default function Calculator() {
 
             {/* Package Carousel */}
             <PackageCarousel
-              packages={packages}
               currentIndex={currentPackageIndex}
               onIndexChange={setCurrentPackageIndex}
               onSelect={handlePackageSelect}
+              onCurrentPackageChange={setCurrentPackageInfo}
               electricityBill={formData.electricityBill}
+              gridType={formData.gridType}
+              roofType={formData.roofType}
+              selectedBrand={selectedBrand}
+              onBrandChange={setSelectedBrand}
+              hasBattery={hasBattery}
+              onBatteryChange={setHasBattery}
             />
           </div>
         )}

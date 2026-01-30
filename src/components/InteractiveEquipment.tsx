@@ -2,23 +2,45 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Package } from '@/data/packages'
+import { type RoofType, type BrandType, type GridType, calculatePower, calculateMonthlyProduction, calculateMonthlySavings } from '@/data/packages'
+import { panels, getDeyeInverter, getHuaweiInverter, getDeyeBattery, huaweiBattery } from '@/data/equipment'
 
 interface InteractiveEquipmentProps {
-  currentPackage: Package
+  panelCount: number
+  inverterKw: number
+  brand: BrandType
+  roofType: RoofType
+  gridType: GridType
+  hasBattery: boolean
+  batteryKwh?: number // For Deye (variable battery sizes)
 }
 
 type EquipmentType = 'panel' | 'inverter' | 'battery' | null
 
-export default function InteractiveEquipment({ currentPackage }: InteractiveEquipmentProps) {
+export default function InteractiveEquipment({
+  panelCount,
+  inverterKw,
+  brand,
+  roofType,
+  gridType,
+  hasBattery,
+  batteryKwh,
+}: InteractiveEquipmentProps) {
   const [activeModal, setActiveModal] = useState<EquipmentType>(null)
   const [hoveredItem, setHoveredItem] = useState<EquipmentType>(null)
 
-  const hasBattery = !!currentPackage.equipment.battery
+  // Get equipment info
+  const panelInfo = panels[roofType]
+  const inverterInfo = brand === 'deye' ? getDeyeInverter(inverterKw, gridType) : getHuaweiInverter(inverterKw, gridType)
+  const batteryInfo = brand === 'deye' && batteryKwh
+    ? getDeyeBattery(batteryKwh)
+    : hasBattery ? huaweiBattery : null
 
   // Calculate estimates
-  const monthlyProduction = Math.round(currentPackage.power * 1400 / 12)
-  const panelArea = Math.round(currentPackage.equipment.panels.quantity * 2.2) // ~2.2m² per panel
+  const powerKwp = calculatePower(panelCount)
+  const monthlyProduction = calculateMonthlyProduction(panelCount)
+  const monthlySavings = calculateMonthlySavings(monthlyProduction)
+  const panelArea = Math.round(panelCount * 2.2) // ~2.2m² per panel
 
   const openModal = (type: EquipmentType) => {
     setActiveModal(type)
@@ -55,7 +77,7 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
         </button>
 
         {/* Button for center tall battery */}
-        {hasBattery && (
+        {batteryInfo && (
           <button
             onClick={() => openModal('battery')}
             onMouseEnter={() => setHoveredItem('battery')}
@@ -116,18 +138,21 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-semibold text-solar-blue">Painéis Solares</span>
                   </div>
-                  <div className="text-xs text-gray-500 mb-1.5">
-                    {currentPackage.equipment.panels.brand} {currentPackage.equipment.panels.model}
+                  <div className="text-xs text-gray-500 mb-0.5">
+                    {panelInfo.brand} {panelInfo.model}
+                  </div>
+                  <div className="text-[10px] text-gray-400 mb-1.5">
+                    {panelInfo.structureShort}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <span className="px-2 py-0.5 bg-solar-blue/10 text-solar-blue text-[10px] font-semibold rounded">
-                      {currentPackage.equipment.panels.quantity}x
+                      {panelCount}x
                     </span>
                     <span className="px-2 py-0.5 bg-solar-orange/10 text-solar-orange text-[10px] font-semibold rounded">
-                      {currentPackage.equipment.panels.wattage}W
+                      {panelInfo.wattage}W
                     </span>
                     <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
-                      12a produto / 25a performance
+                      {panelInfo.warrantyProduct}a produto / {panelInfo.warrantyPerformance}a performance
                     </span>
                   </div>
                 </div>
@@ -160,18 +185,21 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-semibold text-solar-blue">Inversor Híbrido</span>
                   </div>
-                  <div className="text-xs text-gray-500 mb-1.5">
-                    {currentPackage.equipment.inverter.brand} {currentPackage.equipment.inverter.model}
+                  <div className="text-xs text-gray-500 mb-0.5">
+                    {inverterInfo.brand} {inverterInfo.model}
+                  </div>
+                  <div className="text-[10px] text-gray-400 mb-1.5">
+                    {inverterInfo.phaseLabel}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <span className="px-2 py-0.5 bg-solar-orange/10 text-solar-orange text-[10px] font-semibold rounded">
-                      {currentPackage.equipment.inverter.power}
+                      {inverterInfo.power}
                     </span>
                     <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
                       98% eficiência
                     </span>
                     <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
-                      10a garantia
+                      {inverterInfo.warranty}a garantia
                     </span>
                   </div>
                 </div>
@@ -182,7 +210,7 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
             </button>
 
             {/* Battery */}
-            {hasBattery && currentPackage.equipment.battery && (
+            {batteryInfo && (
               <button
                 onClick={() => openModal('battery')}
                 onMouseEnter={() => setHoveredItem('battery')}
@@ -206,17 +234,17 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                       <span className="text-sm font-semibold text-solar-blue">Bateria de Armazenamento</span>
                     </div>
                     <div className="text-xs text-gray-500 mb-1.5">
-                      {currentPackage.equipment.battery.brand} {currentPackage.equipment.battery.model}
+                      {batteryInfo.brand} {batteryInfo.model}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded">
-                        {currentPackage.equipment.battery.capacity}
+                        {batteryInfo.capacity}
                       </span>
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
                         6000+ ciclos
                       </span>
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
-                        10a garantia
+                        {batteryInfo.warranty}a garantia
                       </span>
                     </div>
                   </div>
@@ -257,13 +285,13 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
           </div>
           <div className="mt-2 text-center">
             <span className="text-[10px] text-gray-500">
-              Garantia de instalação: <span className="font-semibold text-green-600">{currentPackage.warranty} anos</span>
+              Garantia de instalação: <span className="font-semibold text-green-600">25 anos</span>
             </span>
           </div>
         </div>
       </div>
 
-      {/* Full Modal - Restructured */}
+      {/* Full Modal */}
       {activeModal && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
@@ -283,30 +311,30 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     {activeModal === 'battery' && 'Bateria de Armazenamento'}
                   </span>
                   <h3 className="text-xl font-bold mt-1">
-                    {activeModal === 'panel' && `${currentPackage.equipment.panels.brand} ${currentPackage.equipment.panels.model}`}
-                    {activeModal === 'inverter' && `${currentPackage.equipment.inverter.brand} ${currentPackage.equipment.inverter.model}`}
-                    {activeModal === 'battery' && currentPackage.equipment.battery && `${currentPackage.equipment.battery.brand} ${currentPackage.equipment.battery.model}`}
+                    {activeModal === 'panel' && `${panelInfo.brand} ${panelInfo.model}`}
+                    {activeModal === 'inverter' && `${inverterInfo.brand} ${inverterInfo.model}`}
+                    {activeModal === 'battery' && batteryInfo && `${batteryInfo.brand} ${batteryInfo.model}`}
                   </h3>
                   {/* Quick specs badges */}
                   <div className="flex gap-2 mt-2">
                     {activeModal === 'panel' && (
                       <>
                         <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-medium">
-                          {currentPackage.equipment.panels.quantity}x
+                          {panelCount}x
                         </span>
                         <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-medium">
-                          {currentPackage.equipment.panels.wattage}W
+                          {panelInfo.wattage}W
                         </span>
                       </>
                     )}
                     {activeModal === 'inverter' && (
                       <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-medium">
-                        {currentPackage.equipment.inverter.power}
+                        {inverterInfo.power}
                       </span>
                     )}
-                    {activeModal === 'battery' && currentPackage.equipment.battery && (
+                    {activeModal === 'battery' && batteryInfo && (
                       <span className="px-2 py-0.5 bg-white/20 rounded text-xs font-medium">
-                        {currentPackage.equipment.battery.capacity}
+                        {batteryInfo.capacity}
                       </span>
                     )}
                   </div>
@@ -327,7 +355,6 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
               {/* Panel Modal Content */}
               {activeModal === 'panel' && (
                 <>
-                  {/* Garantias */}
                   <div className="bg-green-50 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -337,32 +364,32 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <div className="text-xl font-bold text-green-700">12 anos</div>
+                        <div className="text-xl font-bold text-green-700">{panelInfo.warrantyProduct} anos</div>
                         <div className="text-xs text-green-600">Produto / Defeitos</div>
                       </div>
                       <div>
-                        <div className="text-xl font-bold text-green-700">25 anos</div>
+                        <div className="text-xl font-bold text-green-700">{panelInfo.warrantyPerformance} anos</div>
                         <div className="text-xs text-green-600">Performance (80%+)</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Especificações */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">Especificações</h4>
                     <div className="grid grid-cols-2 gap-y-2 text-sm">
                       <div className="text-gray-500">Eficiência</div>
                       <div className="text-gray-900 font-medium text-right">21.3%</div>
                       <div className="text-gray-500">Tecnologia</div>
-                      <div className="text-gray-900 font-medium text-right">Mono PERC</div>
+                      <div className="text-gray-900 font-medium text-right">N-Type</div>
+                      <div className="text-gray-500">Estrutura</div>
+                      <div className="text-gray-900 font-medium text-right">{panelInfo.structureShort}</div>
                       <div className="text-gray-500">Dimensões</div>
                       <div className="text-gray-900 font-medium text-right">1722 x 1134 mm</div>
                       <div className="text-gray-500">Potência total</div>
-                      <div className="text-gray-900 font-medium text-right">{currentPackage.power} kWp</div>
+                      <div className="text-gray-900 font-medium text-right">{powerKwp.toFixed(1)} kWp</div>
                     </div>
                   </div>
 
-                  {/* O que significa para si */}
                   <div className="bg-blue-50 border-l-4 border-solar-blue rounded-r-lg p-4">
                     <h4 className="font-semibold text-solar-blue mb-2">O que significa para si?</h4>
                     <div className="space-y-1.5 text-sm text-gray-600">
@@ -376,7 +403,7 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                       </div>
                       <div className="flex justify-between">
                         <span>Impacto na fatura:</span>
-                        <span className="font-semibold text-green-600">~€{currentPackage.monthlySavings}/mês</span>
+                        <span className="font-semibold text-green-600">~€{monthlySavings}/mês</span>
                       </div>
                     </div>
                   </div>
@@ -386,7 +413,6 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
               {/* Inverter Modal Content */}
               {activeModal === 'inverter' && (
                 <>
-                  {/* Garantias */}
                   <div className="bg-green-50 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -396,7 +422,7 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <div className="text-xl font-bold text-green-700">10 anos</div>
+                        <div className="text-xl font-bold text-green-700">{inverterInfo.warranty} anos</div>
                         <div className="text-xs text-green-600">Garantia total</div>
                       </div>
                       <div>
@@ -406,12 +432,13 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </div>
                   </div>
 
-                  {/* Especificações */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">Especificações</h4>
                     <div className="grid grid-cols-2 gap-y-2 text-sm">
                       <div className="text-gray-500">Potência</div>
-                      <div className="text-gray-900 font-medium text-right">{currentPackage.equipment.inverter.power}</div>
+                      <div className="text-gray-900 font-medium text-right">{inverterInfo.power}</div>
+                      <div className="text-gray-500">Fase</div>
+                      <div className="text-gray-900 font-medium text-right">{inverterInfo.phaseLabel}</div>
                       <div className="text-gray-500">Eficiência</div>
                       <div className="text-gray-900 font-medium text-right">98%</div>
                       <div className="text-gray-500">Tipo</div>
@@ -421,7 +448,6 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </div>
                   </div>
 
-                  {/* O que significa para si */}
                   <div className="bg-blue-50 border-l-4 border-solar-blue rounded-r-lg p-4">
                     <h4 className="font-semibold text-solar-blue mb-2">O que significa para si?</h4>
                     <div className="space-y-1.5 text-sm text-gray-600">
@@ -433,9 +459,8 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
               )}
 
               {/* Battery Modal Content */}
-              {activeModal === 'battery' && currentPackage.equipment.battery && (
+              {activeModal === 'battery' && batteryInfo && (
                 <>
-                  {/* Garantias */}
                   <div className="bg-green-50 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -445,7 +470,7 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <div className="text-xl font-bold text-green-700">10 anos</div>
+                        <div className="text-xl font-bold text-green-700">{batteryInfo.warranty} anos</div>
                         <div className="text-xs text-green-600">Garantia total</div>
                       </div>
                       <div>
@@ -455,12 +480,11 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </div>
                   </div>
 
-                  {/* Especificações */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">Especificações</h4>
                     <div className="grid grid-cols-2 gap-y-2 text-sm">
                       <div className="text-gray-500">Capacidade</div>
-                      <div className="text-gray-900 font-medium text-right">{currentPackage.equipment.battery.capacity}</div>
+                      <div className="text-gray-900 font-medium text-right">{batteryInfo.capacity}</div>
                       <div className="text-gray-500">Tecnologia</div>
                       <div className="text-gray-900 font-medium text-right">LiFePO4</div>
                       <div className="text-gray-500">Profundidade descarga</div>
@@ -470,7 +494,6 @@ export default function InteractiveEquipment({ currentPackage }: InteractiveEqui
                     </div>
                   </div>
 
-                  {/* O que significa para si */}
                   <div className="bg-blue-50 border-l-4 border-solar-blue rounded-r-lg p-4">
                     <h4 className="font-semibold text-solar-blue mb-2">O que significa para si?</h4>
                     <div className="space-y-1.5 text-sm text-gray-600">
