@@ -271,9 +271,9 @@ export default function Calculator() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-6 lg:min-h-[85vh] max-w-[1280px] mx-auto">
       {/* Left Panel - Map or Hero Image */}
-      <div className="card flex flex-col items-center justify-center min-h-[600px] h-[650px] order-2 lg:order-1 overflow-hidden p-4">
+      <div className="card flex flex-col items-center justify-center min-h-[700px] lg:h-auto order-2 lg:order-1 overflow-hidden p-4">
         {step === 1 && isLoaded && !loadError ? (
           <div className="relative w-full h-full min-h-[450px]">
             <GoogleMap
@@ -340,7 +340,7 @@ export default function Calculator() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="card order-1 lg:order-2 min-h-[600px] h-[650px] overflow-y-auto">
+      <div className="card order-1 lg:order-2 min-h-[700px] lg:h-auto lg:min-w-[520px] flex flex-col">
         {/* Step 1: House Data */}
         {step === 1 && (
           <>
@@ -526,7 +526,7 @@ export default function Calculator() {
 
         {/* Step 3: Results with Package Carousel */}
         {step === 3 && (
-          <div className="flex flex-col h-full min-h-[650px]">
+          <div className="flex flex-col flex-1">
             {/* Header */}
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-lg font-bold text-solar-blue">

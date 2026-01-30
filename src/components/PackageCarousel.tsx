@@ -11,6 +11,13 @@ interface PackageCarouselProps {
   electricityBill: number
 }
 
+interface DeltaValues {
+  savings: number
+  coverage: number
+  production: number
+  payback: number
+}
+
 export default function PackageCarousel({
   packages,
   currentIndex,
@@ -25,6 +32,12 @@ export default function PackageCarousel({
     coverage: 0,
     production: 0
   })
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null)
+  const [deltas, setDeltas] = useState<DeltaValues>({ savings: 0, coverage: 0, production: 0, payback: 0 })
+  const [showDeltas, setShowDeltas] = useState(false)
+  const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set())
+  const prevIndexRef = useRef<number>(currentIndex)
+  const prevValuesRef = useRef<{ savings: number; coverage: number; production: number; payback: number } | null>(null)
 
   const currentPackage = packages[currentIndex]
 
@@ -35,6 +48,48 @@ export default function PackageCarousel({
   const coveragePercent = Math.min(Math.round((monthlySavings / electricityBill) * 100), 100)
   const monthlyProduction = Math.round(currentPackage.power * 1400 / 12) // kWh/month estimate
   const batteryCapacity = currentPackage.equipment.battery?.capacity || 'Sem bateria'
+
+  // Calculate and show deltas when package changes
+  useEffect(() => {
+    if (prevIndexRef.current !== currentIndex && prevValuesRef.current) {
+      const newDeltas: DeltaValues = {
+        savings: monthlySavings - prevValuesRef.current.savings,
+        coverage: coveragePercent - prevValuesRef.current.coverage,
+        production: monthlyProduction - prevValuesRef.current.production,
+        payback: paybackYears - prevValuesRef.current.payback,
+      }
+
+      setDeltas(newDeltas)
+      setShowDeltas(true)
+
+      // Highlight changed fields
+      const changedFields = new Set<string>()
+      if (newDeltas.savings !== 0) changedFields.add('savings')
+      if (newDeltas.coverage !== 0) changedFields.add('coverage')
+      if (newDeltas.production !== 0) changedFields.add('production')
+      if (newDeltas.payback !== 0) changedFields.add('payback')
+      setHighlightedFields(changedFields)
+
+      // Hide deltas after 600ms
+      const timer = setTimeout(() => {
+        setShowDeltas(false)
+        setHighlightedFields(new Set())
+      }, 600)
+
+      return () => clearTimeout(timer)
+    }
+  }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction, paybackYears])
+
+  // Store previous values before change
+  useEffect(() => {
+    prevValuesRef.current = {
+      savings: monthlySavings,
+      coverage: coveragePercent,
+      production: monthlyProduction,
+      payback: paybackYears,
+    }
+    prevIndexRef.current = currentIndex
+  }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction, paybackYears])
 
   // Animate values on package change
   useEffect(() => {
@@ -61,6 +116,13 @@ export default function PackageCarousel({
 
     return () => clearInterval(timer)
   }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction])
+
+  // Helper to format delta
+  const formatDelta = (value: number, suffix: string = '') => {
+    if (value === 0) return null
+    const sign = value > 0 ? '+' : ''
+    return `${sign}${value}${suffix}`
+  }
 
   const goToPrevious = useCallback(() => {
     const newIndex = currentIndex === 0 ? packages.length - 1 : currentIndex - 1
@@ -165,11 +227,16 @@ export default function PackageCarousel({
         <div className="bg-white rounded-xl p-3">
           <div className="grid grid-cols-3 gap-2">
             {/* Savings */}
-            <div className="text-center group cursor-default">
+            <div className={`text-center group cursor-default relative transition-all duration-300 rounded-lg ${highlightedFields.has('savings') ? 'bg-green-50 ring-2 ring-green-300' : ''}`}>
               <div className="relative">
                 <div className="text-2xl font-bold text-green-600 transition-transform group-hover:scale-110">
                   €{animatedValues.savings}
                 </div>
+                {showDeltas && deltas.savings !== 0 && (
+                  <span className={`absolute -top-1 -right-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-fade-in ${deltas.savings > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                    {formatDelta(deltas.savings, '€')}
+                  </span>
+                )}
                 <div className="text-xs text-gray-400">€{yearlySavings}/ano</div>
               </div>
               <div className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
@@ -181,9 +248,14 @@ export default function PackageCarousel({
             </div>
 
             {/* Payback */}
-            <div className="text-center border-x border-gray-200 group cursor-default">
-              <div className="text-2xl font-bold text-solar-blue transition-transform group-hover:scale-110">
+            <div className={`text-center border-x border-gray-200 group cursor-default relative transition-all duration-300 rounded-lg ${highlightedFields.has('payback') ? 'bg-blue-50 ring-2 ring-blue-300' : ''}`}>
+              <div className="text-2xl font-bold text-solar-blue transition-transform group-hover:scale-110 relative">
                 {paybackYears}-{paybackYears + 2}
+                {showDeltas && deltas.payback !== 0 && (
+                  <span className={`absolute -top-1 -right-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-fade-in ${deltas.payback < 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                    {formatDelta(deltas.payback, ' anos')}
+                  </span>
+                )}
               </div>
               <div className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
                 <svg className="w-3 h-3 text-solar-blue" fill="currentColor" viewBox="0 0 20 20">
@@ -194,11 +266,16 @@ export default function PackageCarousel({
             </div>
 
             {/* Coverage */}
-            <div className="text-center group cursor-default">
+            <div className={`text-center group cursor-default relative transition-all duration-300 rounded-lg ${highlightedFields.has('coverage') ? 'bg-orange-50 ring-2 ring-orange-300' : ''}`}>
               <div className="relative">
                 <div className="text-2xl font-bold text-solar-orange transition-transform group-hover:scale-110">
                   {animatedValues.coverage}%
                 </div>
+                {showDeltas && deltas.coverage !== 0 && (
+                  <span className={`absolute -top-1 -right-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-fade-in ${deltas.coverage > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                    {formatDelta(deltas.coverage, '%')}
+                  </span>
+                )}
                 {/* Mini progress bar */}
                 <div className="w-full h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
                   <div
@@ -221,7 +298,7 @@ export default function PackageCarousel({
       {/* System Characteristics - Power, Battery, Production */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         {/* Panel Power */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2.5 text-center hover:shadow-md transition-shadow cursor-default group">
+        <div className={`bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2.5 text-center hover:shadow-md transition-all duration-300 cursor-default group ${highlightedFields.has('production') ? 'ring-2 ring-blue-400' : ''}`}>
           <div className="w-8 h-8 mx-auto mb-1 bg-solar-blue rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" />
@@ -251,51 +328,160 @@ export default function PackageCarousel({
         </div>
 
         {/* Monthly Production */}
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-2.5 text-center hover:shadow-md transition-shadow cursor-default group">
+        <div className={`bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-2.5 text-center hover:shadow-md transition-all duration-300 cursor-default group relative ${highlightedFields.has('production') ? 'ring-2 ring-orange-400' : ''}`}>
           <div className="w-8 h-8 mx-auto mb-1 bg-solar-orange rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
             </svg>
           </div>
-          <div className="text-lg font-bold text-solar-orange">{animatedValues.production}</div>
+          <div className="text-lg font-bold text-solar-orange relative inline-block">
+            {animatedValues.production}
+            {showDeltas && deltas.production !== 0 && (
+              <span className={`absolute -top-2 -right-6 text-[9px] font-bold px-1 py-0.5 rounded-full animate-fade-in whitespace-nowrap ${deltas.production > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                {formatDelta(deltas.production)}
+              </span>
+            )}
+          </div>
           <div className="text-[10px] text-gray-500">kWh/mês produção</div>
         </div>
       </div>
 
-      {/* Equipment list - compact */}
-      <div className="bg-solar-gray rounded-lg p-2.5 mb-3">
-        <h4 className="text-xs font-semibold text-solar-blue mb-1.5">Equipamento incluído:</h4>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+      {/* Production vs Consumption Chart */}
+      <div className="bg-white rounded-lg p-3 mb-3 border border-gray-100">
+        {/* Legend */}
+        <div className="flex justify-center gap-6 mb-2 text-[10px]">
           <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-solar-orange rounded-full flex-shrink-0" />
-            <span className="text-gray-700 truncate">
-              {currentPackage.equipment.panels.quantity}x {currentPackage.equipment.panels.brand} {currentPackage.equipment.panels.wattage}W
-            </span>
+            <div className="w-3 h-3 bg-solar-blue rounded" />
+            <span className="text-gray-600">Geração (kWh/mês)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-solar-orange rounded-full flex-shrink-0" />
-            <span className="text-gray-700 truncate">
-              {currentPackage.equipment.inverter.brand} {currentPackage.equipment.inverter.power}
-            </span>
-          </div>
-          {currentPackage.equipment.battery && (
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-solar-orange rounded-full flex-shrink-0" />
-              <span className="text-gray-700 truncate">
-                Bateria {currentPackage.equipment.battery.brand}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0" />
-            <span className="text-gray-700">Instalação incluída</span>
+            <div className="w-3 h-3 bg-gray-300 rounded" />
+            <span className="text-gray-600">Consumo (kWh/mês)</span>
           </div>
         </div>
+
+        {/* Chart */}
+        {(() => {
+          const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+          // Production: peak in summer (Jun-Aug), based on panel count
+          const productionFactors = [0.50, 0.60, 0.75, 0.90, 1.00, 1.12, 1.18, 1.12, 0.92, 0.72, 0.55, 0.45]
+          // Consumption: based on electricity bill, peak in winter (Dec-Feb)
+          const consumptionFactors = [1.20, 1.15, 1.00, 0.85, 0.72, 0.65, 0.60, 0.65, 0.75, 0.88, 1.05, 1.25]
+
+          // Consumption from electricity bill (€ to kWh estimate)
+          const baseConsumption = electricityBill * 2
+          const consumptions = consumptionFactors.map(f => Math.round(baseConsumption * f))
+
+          // Production from panels (kWp * sun hours factor)
+          const productions = productionFactors.map(f => Math.round(monthlyProduction * f))
+
+          const maxValue = Math.max(...productions, ...consumptions) * 1.15
+          const chartHeight = 120
+
+          // Create SVG path for smooth consumption curve
+          const points = consumptions.map((c, i) => {
+            const x = (i / (consumptions.length - 1)) * 100
+            const y = chartHeight - (c / maxValue) * chartHeight
+            return { x, y, value: c }
+          })
+
+          // Smooth bezier curve
+          let pathD = `M 0 ${chartHeight} L 0 ${points[0].y}`
+          for (let i = 0; i < points.length - 1; i++) {
+            const cp1x = points[i].x + (points[i + 1].x - points[i].x) / 3
+            const cp2x = points[i].x + 2 * (points[i + 1].x - points[i].x) / 3
+            pathD += ` C ${cp1x} ${points[i].y}, ${cp2x} ${points[i + 1].y}, ${points[i + 1].x} ${points[i + 1].y}`
+          }
+          pathD += ` L 100 ${chartHeight} Z`
+
+          return (
+            <div className="relative" style={{ height: '160px' }}>
+              {/* Consumption area (smooth curve in background) */}
+              <svg
+                className="absolute top-0 left-0 w-full"
+                style={{ height: `${chartHeight}px` }}
+                viewBox={`0 0 100 ${chartHeight}`}
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="consumptionGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#D1D5DB" stopOpacity="0.6" />
+                    <stop offset="100%" stopColor="#D1D5DB" stopOpacity="0.1" />
+                  </linearGradient>
+                </defs>
+                <path d={pathD} fill="url(#consumptionGradient)" />
+                <path
+                  d={pathD.replace(/ L 100 \d+ Z$/, '')}
+                  fill="none"
+                  stroke="#9CA3AF"
+                  strokeWidth="0.8"
+                />
+              </svg>
+
+              {/* Production bars (foreground) */}
+              <div
+                className="absolute top-0 left-0 right-0 flex items-end justify-between gap-1 px-1"
+                style={{ height: `${chartHeight}px` }}
+              >
+                {months.map((month, index) => {
+                  const production = productions[index]
+                  const consumption = consumptions[index]
+                  const barHeight = (production / maxValue) * chartHeight
+                  const isHovered = hoveredMonth === index
+
+                  return (
+                    <div
+                      key={month}
+                      className="flex-1 flex items-end justify-center cursor-pointer relative"
+                      style={{ height: `${chartHeight}px` }}
+                      onMouseEnter={() => setHoveredMonth(index)}
+                      onMouseLeave={() => setHoveredMonth(null)}
+                    >
+                      {/* Tooltip on hover */}
+                      {isHovered && (
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-solar-blue text-white text-[9px] px-2 py-1 rounded shadow-lg z-30 whitespace-nowrap">
+                          <div>Geração: {production} kWh</div>
+                          <div>Consumo: {consumption} kWh</div>
+                        </div>
+                      )}
+
+                      {/* Production bar */}
+                      <div
+                        className={`w-[75%] rounded-t-sm transition-all duration-200 ${
+                          isHovered ? 'bg-solar-blue' : 'bg-solar-blue/80'
+                        }`}
+                        style={{ height: `${barHeight}px` }}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Month labels */}
+              <div
+                className="absolute left-0 right-0 flex justify-between px-1"
+                style={{ top: `${chartHeight + 4}px` }}
+              >
+                {months.map((month, index) => (
+                  <span
+                    key={month}
+                    className={`text-[8px] flex-1 text-center transition-colors ${
+                      hoveredMonth === index ? 'text-solar-blue font-bold' : 'text-gray-400'
+                    }`}
+                  >
+                    {month}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Price and CTA */}
       <div className="mt-auto">
         <div className="text-center mb-2">
+          <div className="text-xs text-gray-500 mb-1">Sob chave</div>
           <span className="text-4xl font-bold text-solar-orange">
             €{currentPackage.price.toLocaleString()}
           </span>
@@ -309,10 +495,6 @@ export default function PackageCarousel({
         </button>
       </div>
 
-      {/* Swipe hint on mobile */}
-      <p className="text-center text-xs text-gray-400 mt-2 lg:hidden">
-        Deslize para ver outros pacotes
-      </p>
     </div>
   )
 }
