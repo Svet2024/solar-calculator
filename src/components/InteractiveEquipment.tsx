@@ -58,61 +58,93 @@ export default function InteractiveEquipment({
     setActiveModal(null)
   }
 
+  // Hotspot positions for each brand - top-left corner of each equipment
+  const hotspots = brand === 'deye'
+    ? {
+        panel: { x: 58, y: 8 },       // Panel top-left corner
+        battery: { x: 22, y: 32 },    // Stacked batteries - lowered
+        inverter: { x: 72, y: 28 },   // Inverter top-left
+      }
+    : {
+        panel: { x: 45, y: 8 },       // Panel top-left corner
+        battery: { x: 18, y: 38 },    // Tall battery - lowered
+        inverter: { x: 62, y: 38 },   // White inverter - lowered
+      }
+
+  // Hotspot button component (simple, no glitchy animation)
+  const HotspotButton = ({ type, x, y }: { type: EquipmentType; x: number; y: number }) => {
+    const isHovered = hoveredItem === type
+    const baseColor = '#F59E0B'
+    const hoverColor = '#1E3A5F'
+    const color = isHovered ? hoverColor : baseColor
+
+    return (
+      <g
+        style={{ cursor: 'pointer' }}
+        onClick={() => openModal(type)}
+        onMouseEnter={() => setHoveredItem(type)}
+        onMouseLeave={() => setHoveredItem(null)}
+      >
+        {/* Shadow/glow effect */}
+        <circle
+          cx={x}
+          cy={y}
+          r={isHovered ? 5.5 : 4.5}
+          fill={color}
+          opacity={0.3}
+        />
+        {/* Main circle */}
+        <circle
+          cx={x}
+          cy={y}
+          r={isHovered ? 4 : 3.5}
+          fill={color}
+          stroke="white"
+          strokeWidth={0.6}
+        />
+        {/* Letter i */}
+        <text
+          x={x}
+          y={y + 1.2}
+          textAnchor="middle"
+          fill="white"
+          fontSize={4}
+          fontWeight="bold"
+          style={{ pointerEvents: 'none' }}
+        >
+          i
+        </text>
+      </g>
+    )
+  }
+
   return (
     <div className="relative w-full h-full flex flex-col rounded-xl overflow-hidden">
-      {/* Equipment image with hotspots */}
-      <div className="relative flex-1 flex items-center justify-center min-h-0">
-        <Image
-          src="/equipment/All-together.jpg"
-          alt="Equipamento solar"
-          width={550}
-          height={440}
-          className="object-contain max-h-full"
-        />
-
-        {/* Button for left equipment (small inverter) */}
-        <button
-          onClick={() => openModal('inverter')}
-          onMouseEnter={() => setHoveredItem('inverter')}
-          onMouseLeave={() => setHoveredItem(null)}
-          className={`absolute z-30 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all shadow-lg border-2 border-white ${
-            hoveredItem === 'inverter' ? 'bg-solar-blue scale-125' : 'bg-solar-orange hover:scale-110'
-          }`}
-          style={{ left: '28%', top: '45%' }}
+      {/* Equipment image with hotspots - SVG wrapper */}
+      <div className="relative flex-1 flex items-start justify-center min-h-0 pt-2">
+        <svg
+          viewBox="0 0 100 80"
+          className="w-full max-w-[550px] h-auto"
+          style={{ maxHeight: '380px' }}
+          preserveAspectRatio="xMidYMin meet"
         >
-          <span className={`absolute w-full h-full rounded-full animate-ping opacity-40 ${hoveredItem === 'inverter' ? 'bg-solar-blue' : 'bg-solar-orange'}`} />
-          <span className="relative text-white text-sm font-bold">i</span>
-        </button>
+          {/* Equipment image */}
+          <image
+            href={brand === 'deye' ? '/equipment/Deye.jpg' : '/equipment/Huawei.jpg'}
+            x="0"
+            y="0"
+            width="100"
+            height="80"
+            preserveAspectRatio="xMidYMin meet"
+          />
 
-        {/* Button for center tall battery */}
-        {batteryInfo && (
-          <button
-            onClick={() => openModal('battery')}
-            onMouseEnter={() => setHoveredItem('battery')}
-            onMouseLeave={() => setHoveredItem(null)}
-            className={`absolute z-30 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all shadow-lg border-2 border-white ${
-              hoveredItem === 'battery' ? 'bg-solar-blue scale-125' : 'bg-solar-orange hover:scale-110'
-            }`}
-            style={{ left: '44%', top: '20%' }}
-          >
-            <span className={`absolute w-full h-full rounded-full animate-ping opacity-40 ${hoveredItem === 'battery' ? 'bg-solar-blue' : 'bg-solar-orange'}`} />
-            <span className="relative text-white text-sm font-bold">i</span>
-          </button>
-        )}
-
-        {/* Button for right equipment */}
-        <button
-          onClick={() => openModal('panel')}
-          onMouseEnter={() => setHoveredItem('panel')}
-          onMouseLeave={() => setHoveredItem(null)}
-          className={`absolute z-30 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all shadow-lg border-2 border-white ${
-            hoveredItem === 'panel' ? 'bg-solar-blue scale-125' : 'bg-solar-orange hover:scale-110'
-          }`}
-          style={{ left: '62%', top: '35%' }}
-        >
-          <span className={`absolute w-full h-full rounded-full animate-ping opacity-40 ${hoveredItem === 'panel' ? 'bg-solar-blue' : 'bg-solar-orange'}`} />
-          <span className="relative text-white text-sm font-bold">i</span>
-        </button>
+          {/* Hotspot buttons */}
+          <HotspotButton type="panel" x={hotspots.panel.x} y={hotspots.panel.y} />
+          {batteryInfo && (
+            <HotspotButton type="battery" x={hotspots.battery.x} y={hotspots.battery.y} />
+          )}
+          <HotspotButton type="inverter" x={hotspots.inverter.x} y={hotspots.inverter.y} />
+        </svg>
       </div>
 
       {/* Equipment list below image */}

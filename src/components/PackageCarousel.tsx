@@ -679,8 +679,11 @@ export default function PackageCarousel({
         })()}
       </div>
 
+      {/* Spacer for mobile fixed CTA */}
+      <div className="h-40 md:hidden" />
+
       {/* Price and CTA */}
-      <div className="mt-auto pt-3 sticky bottom-0 bg-white pb-2">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white pt-3 pb-[env(safe-area-inset-bottom,8px)] px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:static md:z-auto md:shadow-none md:px-0 md:pt-3 md:pb-2 md:mt-auto">
         <div className="text-center mb-2">
           <div className="text-xs text-gray-500 mb-0.5">Sistema «chave na mão»</div>
           <span className="text-4xl font-bold text-solar-orange">
