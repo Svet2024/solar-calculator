@@ -13,11 +13,9 @@ import {
   getHuaweiPrice,
   findRecommendedIndex,
   calculatePower,
-  calculateMonthlyProduction,
-  calculateMonthlySavings,
-  calculatePaybackYears,
   getMonthlyProductionArray,
 } from '@/data/packages'
+import { calcFromMonthlyBill, calculatePayback, getMonthlyValues } from '@/lib/pvCalculator'
 import { panels, getDeyeInverter, getHuaweiInverter, getDeyeBattery, huaweiBattery } from '@/data/equipment'
 
 // Current package info for equipment display
@@ -122,13 +120,24 @@ export default function PackageCarousel({
     ? getDeyePrice(currentPackage as DeyePackageConfig, gridType, roofType) || 0
     : getHuaweiPrice(currentPackage as HuaweiPackageConfig, gridType, roofType, hasBattery) || 0
 
-  // Calculate values based on package
+  // Calculate values using PV calculator (formula-based model)
+  const batteryKwhForCalc = selectedBrand === 'deye'
+    ? (currentPackage as DeyePackageConfig).batteryKwh
+    : hasBattery ? 7 : 0
+
+  const pvResult = calcFromMonthlyBill(
+    currentPackage.panelCount,
+    electricityBill,
+    batteryKwhForCalc
+  )
+
   const powerKwp = calculatePower(currentPackage.panelCount)
-  const monthlyProduction = calculateMonthlyProduction(currentPackage.panelCount)
-  const monthlySavings = calculateMonthlySavings(monthlyProduction)
-  const yearlySavings = monthlySavings * 12
-  const paybackYears = calculatePaybackYears(price, monthlySavings)
-  const coveragePercent = Math.min(Math.round((monthlySavings / electricityBill) * 100), 100)
+  const monthlyValues = getMonthlyValues(pvResult)
+  const monthlyProduction = monthlyValues.E_self_month_kWh
+  const monthlySavings = monthlyValues.savings_eur_month
+  const yearlySavings = pvResult.savings_eur_year
+  const paybackYears = calculatePayback(price, pvResult)
+  const coveragePercent = Math.round(pvResult.autonomy_pct)
 
   // Get battery info
   const getBatteryCapacity = () => {
@@ -229,11 +238,15 @@ export default function PackageCarousel({
     return () => clearInterval(timer)
   }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction, selectedBrand, hasBattery])
 
-  // Helper to format delta
-  const formatDelta = (value: number, suffix: string = '') => {
+  // Helper to format delta with proper rounding
+  const formatDelta = (value: number, suffix: string = '', decimals: number = 0) => {
     if (value === 0) return null
-    const sign = value > 0 ? '+' : ''
-    return `${sign}${value}${suffix}`
+    const rounded = decimals > 0
+      ? Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
+      : Math.round(value)
+    if (rounded === 0) return null
+    const sign = rounded > 0 ? '+' : ''
+    return `${sign}${rounded}${suffix}`
   }
 
   const goToPrevious = useCallback(() => {
@@ -448,7 +461,7 @@ export default function PackageCarousel({
                 {paybackYears}-{paybackYears + 2}
                 {showDeltas && deltas.payback !== 0 && (
                   <span className={`absolute -top-1 -right-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-fade-in ${deltas.payback < 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                    {formatDelta(deltas.payback, ' anos')}
+                    {formatDelta(deltas.payback, ' anos', 1)}
                   </span>
                 )}
               </div>

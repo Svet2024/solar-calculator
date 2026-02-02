@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { type RoofType, type BrandType, type GridType, calculatePower, calculateMonthlyProduction, calculateMonthlySavings } from '@/data/packages'
+import { type RoofType, type BrandType, type GridType, calculatePower } from '@/data/packages'
 import { panels, getDeyeInverter, getHuaweiInverter, getDeyeBattery, huaweiBattery } from '@/data/equipment'
+import { calcFromMonthlyBill, getMonthlyValues } from '@/lib/pvCalculator'
 
 interface InteractiveEquipmentProps {
   panelCount: number
@@ -13,6 +14,7 @@ interface InteractiveEquipmentProps {
   gridType: GridType
   hasBattery: boolean
   batteryKwh?: number // For Deye (variable battery sizes)
+  electricityBill: number // Monthly bill for PV calculations
 }
 
 type EquipmentType = 'panel' | 'inverter' | 'battery' | null
@@ -25,6 +27,7 @@ export default function InteractiveEquipment({
   gridType,
   hasBattery,
   batteryKwh,
+  electricityBill,
 }: InteractiveEquipmentProps) {
   const [activeModal, setActiveModal] = useState<EquipmentType>(null)
   const [hoveredItem, setHoveredItem] = useState<EquipmentType>(null)
@@ -36,10 +39,15 @@ export default function InteractiveEquipment({
     ? getDeyeBattery(batteryKwh)
     : hasBattery ? huaweiBattery : null
 
-  // Calculate estimates
+  // Calculate using PV formula model
+  const batteryKwhForCalc = batteryKwh ?? (hasBattery ? 7 : 0)
+  const pvResult = calcFromMonthlyBill(panelCount, electricityBill, batteryKwhForCalc)
+  const monthlyValues = getMonthlyValues(pvResult)
+
+  // Values for display
   const powerKwp = calculatePower(panelCount)
-  const monthlyProduction = calculateMonthlyProduction(panelCount)
-  const monthlySavings = calculateMonthlySavings(monthlyProduction)
+  const monthlyProduction = monthlyValues.E_self_month_kWh
+  const monthlySavings = monthlyValues.savings_eur_month
   const panelArea = Math.round(panelCount * 2.2) // ~2.2m² per panel
 
   const openModal = (type: EquipmentType) => {

@@ -448,6 +448,7 @@ export default function Calculator() {
             gridType={formData.gridType}
             hasBattery={selectedBrand === 'deye' || hasBattery}
             batteryKwh={currentPackageInfo.batteryKwh ?? undefined}
+            electricityBill={formData.electricityBill}
           />
         ) : (
           <div className="relative w-full h-full min-h-[450px]">
