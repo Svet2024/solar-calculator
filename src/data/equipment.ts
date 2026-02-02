@@ -141,15 +141,39 @@ export const huaweiInvertersTri: Record<number, InverterSpec> = {
 // Legacy export for compatibility
 export const huaweiInverters = huaweiInvertersTri
 
-// Huawei battery (fixed 7 kWh)
-export const huaweiBattery = {
-  brand: 'Huawei',
-  model: 'Luna 2000',
-  capacity: '7 kWh',
-  warranty: 10,
-  cycles: 6000,
-  image: '/equipment/Huawei.jpg',
+// Huawei batteries (Luna 2000 modules - stackable)
+export const huaweiBatteries: Record<
+  number,
+  { brand: string; model: string; capacity: string; warranty: number; cycles: number; image: string }
+> = {
+  7: {
+    brand: 'Huawei',
+    model: 'Luna 2000',
+    capacity: '7 kWh',
+    warranty: 10,
+    cycles: 6000,
+    image: '/equipment/Huawei.jpg',
+  },
+  14: {
+    brand: 'Huawei',
+    model: 'Luna 2000 x2',
+    capacity: '14 kWh',
+    warranty: 10,
+    cycles: 6000,
+    image: '/equipment/Huawei.jpg',
+  },
+  21: {
+    brand: 'Huawei',
+    model: 'Luna 2000 x3',
+    capacity: '21 kWh',
+    warranty: 10,
+    cycles: 6000,
+    image: '/equipment/Huawei.jpg',
+  },
 }
+
+// Legacy export for compatibility
+export const huaweiBattery = huaweiBatteries[7]
 
 // Deye monophase inverters (LP1 = single phase)
 export const deyeInvertersMono: Record<number, InverterSpec> = {
@@ -270,4 +294,34 @@ export function getDeyeInverter(kw: number, gridType: GridType = 'trifasica') {
 // Get Deye battery by kWh
 export function getDeyeBattery(kwh: number) {
   return deyeBatteries[kwh] || deyeBatteries[5]
+}
+
+// Get Huawei battery by kWh
+export function getHuaweiBattery(kwh: number) {
+  return huaweiBatteries[kwh] || huaweiBatteries[7]
+}
+
+// Battery upgrade pricing (€ per additional 5 kWh module)
+export const BATTERY_UPGRADE_PRICE = {
+  deye: 1600,   // +€1,600 per 5 kWh module
+  huawei: 4000, // €4,000 per 7 kWh module
+}
+
+// Calculate battery upgrade cost
+export function getBatteryUpgradeCost(
+  brand: 'deye' | 'huawei',
+  baseKwh: number,
+  selectedKwh: number
+): number {
+  if (selectedKwh <= baseKwh) return 0
+
+  if (brand === 'deye') {
+    // Deye: +€1,600 per additional 5 kWh
+    const additionalModules = (selectedKwh - baseKwh) / 5
+    return additionalModules * BATTERY_UPGRADE_PRICE.deye
+  } else {
+    // Huawei: +€4,000 per additional 7 kWh
+    const additionalModules = (selectedKwh - baseKwh) / 7
+    return additionalModules * BATTERY_UPGRADE_PRICE.huawei
+  }
 }

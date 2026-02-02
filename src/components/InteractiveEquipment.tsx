@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { type RoofType, type BrandType, type GridType, calculatePower } from '@/data/packages'
-import { panels, getDeyeInverter, getHuaweiInverter, getDeyeBattery, huaweiBattery } from '@/data/equipment'
+import { panels, getDeyeInverter, getHuaweiInverter, getDeyeBattery, getHuaweiBattery } from '@/data/equipment'
 import { calcFromMonthlyBill, getMonthlyValues } from '@/lib/pvCalculator'
 
 interface InteractiveEquipmentProps {
@@ -37,7 +37,7 @@ export default function InteractiveEquipment({
   const inverterInfo = brand === 'deye' ? getDeyeInverter(inverterKw, gridType) : getHuaweiInverter(inverterKw, gridType)
   const batteryInfo = brand === 'deye' && batteryKwh
     ? getDeyeBattery(batteryKwh)
-    : hasBattery ? huaweiBattery : null
+    : (hasBattery && batteryKwh) ? getHuaweiBattery(batteryKwh) : null
 
   // Calculate using PV formula model
   const batteryKwhForCalc = batteryKwh ?? (hasBattery ? 7 : 0)

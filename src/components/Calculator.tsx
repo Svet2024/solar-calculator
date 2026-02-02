@@ -70,6 +70,7 @@ export default function Calculator() {
   // Brand selection state (Step 3)
   const [selectedBrand, setSelectedBrand] = useState<BrandType>('deye')
   const [hasBattery, setHasBattery] = useState(true)
+  const [selectedBatteryKwh, setSelectedBatteryKwh] = useState(5) // Default: 5 kWh for Deye
 
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [isLocating, setIsLocating] = useState(false)
@@ -682,6 +683,8 @@ export default function Calculator() {
               onBrandChange={setSelectedBrand}
               hasBattery={hasBattery}
               onBatteryChange={setHasBattery}
+              selectedBatteryKwh={selectedBatteryKwh}
+              onBatteryKwhChange={setSelectedBatteryKwh}
             />
           </div>
         )}
