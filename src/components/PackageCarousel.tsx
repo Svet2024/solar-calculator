@@ -49,10 +49,10 @@ function getAvailableBatteryOptions(brand: BrandType, panelCount: number): numbe
     if (panelCount >= 16) return [10, 16]      // 16+ panels: 10, 16 kWh
     return [5, 10, 16]                          // 10-14 panels: all options
   } else {
-    // Huawei: 7, 14, 21 kWh options
-    if (panelCount <= 8) return [7, 14]        // 6-8 panels: 7, 14 kWh
-    if (panelCount >= 16) return [14, 21]      // 16+ panels: 14, 21 kWh
-    return [7, 14, 21]                          // 10-14 panels: all options
+    // Huawei: 0 (no battery), 7, 14 kWh options
+    if (panelCount <= 8) return [0, 7, 14]      // 6-8 panels: 0, 7, 14 kWh
+    if (panelCount >= 16) return [0, 7, 14]     // 16+ panels: 0, 7, 14 kWh
+    return [0, 7, 14]                            // 10-14 panels: 0, 7, 14 kWh
   }
 }
 
@@ -160,10 +160,8 @@ export default function PackageCarousel({
     ? getDeyePrice(currentPackage as DeyePackageConfig, gridType, roofType) || 0
     : getHuaweiPrice(currentPackage as HuaweiPackageConfig, gridType, roofType, hasBattery) || 0
 
-  // Calculate battery upgrade cost
-  const batteryUpgradeCost = hasBattery || selectedBrand === 'deye'
-    ? getBatteryUpgradeCost(selectedBrand, baseBatteryKwh, effectiveBatteryKwh)
-    : 0
+  // Calculate battery upgrade cost (can be negative for downgrades)
+  const batteryUpgradeCost = getBatteryUpgradeCost(selectedBrand, baseBatteryKwh, effectiveBatteryKwh)
 
   // Total price including battery upgrade
   const price = basePrice + batteryUpgradeCost
@@ -388,69 +386,60 @@ export default function PackageCarousel({
       </div>
 
       {/* Battery Capacity Selector */}
-      {(selectedBrand === 'deye' || hasBattery) && (
-        <div className="mb-3">
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-            Capacidade da bateria
-          </label>
-          <div className="flex gap-2">
-            {availableBatteryOptions.map((kwh) => {
-              const isSelected = effectiveBatteryKwh === kwh
-              const isBase = kwh === baseBatteryKwh
-              const upgradeCost = getBatteryUpgradeCost(selectedBrand, baseBatteryKwh, kwh)
+      <div className="mb-3">
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          Capacidade da bateria
+        </label>
+        <div className="flex gap-2">
+          {availableBatteryOptions.map((kwh) => {
+            const isSelected = effectiveBatteryKwh === kwh
+            const isBase = kwh === baseBatteryKwh
+            const upgradeCost = getBatteryUpgradeCost(selectedBrand, baseBatteryKwh, kwh)
+            const isNoBattery = kwh === 0
 
-              return (
-                <button
-                  key={kwh}
-                  onClick={() => onBatteryKwhChange(kwh)}
-                  className={`flex-1 py-2 px-2 rounded-lg text-sm font-semibold transition-all border-2 ${
-                    isSelected
-                      ? 'bg-green-500 text-white border-green-500 shadow-md'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="text-center">
-                    <div className={`font-bold ${isSelected ? 'text-white' : 'text-gray-700'}`}>
-                      {kwh} kWh
-                    </div>
-                    <div className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
-                      {isBase ? 'incluído' : `+€${upgradeCost.toLocaleString()}`}
-                    </div>
+            // Format price label
+            let priceLabel: string
+            if (isNoBattery) {
+              priceLabel = `-€${Math.abs(upgradeCost).toLocaleString()}`
+            } else if (isBase) {
+              priceLabel = 'incluído'
+            } else if (upgradeCost > 0) {
+              priceLabel = `+€${upgradeCost.toLocaleString()}`
+            } else {
+              priceLabel = `-€${Math.abs(upgradeCost).toLocaleString()}`
+            }
+
+            return (
+              <button
+                key={kwh}
+                onClick={() => {
+                  onBatteryKwhChange(kwh)
+                  // Sync hasBattery state for Huawei
+                  if (selectedBrand === 'huawei') {
+                    onBatteryChange(kwh > 0)
+                  }
+                }}
+                className={`flex-1 py-2 px-2 rounded-lg text-sm font-semibold transition-all border-2 ${
+                  isSelected
+                    ? isNoBattery
+                      ? 'bg-gray-500 text-white border-gray-500 shadow-md'
+                      : 'bg-green-500 text-white border-green-500 shadow-md'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-center">
+                  <div className={`font-bold ${isSelected ? 'text-white' : 'text-gray-700'}`}>
+                    {isNoBattery ? 'Sem bateria' : `${kwh} kWh`}
                   </div>
-                </button>
-              )
-            })}
-          </div>
+                  <div className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                    {priceLabel}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
         </div>
-      )}
-
-      {/* Battery Toggle (only for Huawei without battery) */}
-      {selectedBrand === 'huawei' && !hasBattery && (
-        <div className="mb-3">
-          <button
-            onClick={() => {
-              onBatteryChange(true)
-              onBatteryKwhChange(7) // Reset to base when enabling
-            }}
-            className="w-full flex items-center justify-between p-3 rounded-lg border-2 transition-all bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-300">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.5a1 1 0 00-.5.13V4a1 1 0 00-1-1h-2a1 1 0 00-1 1v.13A1 1 0 009.5 4H4zm8 6a1 1 0 01-1 1H6a1 1 0 110-2h5a1 1 0 011 1z" />
-                </svg>
-              </div>
-              <div className="text-left">
-                <div className="text-sm font-semibold">Sem bateria</div>
-                <div className="text-xs opacity-75">Clique para adicionar (+€{BATTERY_UPGRADE_PRICE.huawei.toLocaleString()})</div>
-              </div>
-            </div>
-            <div className="w-10 h-6 rounded-full p-1 transition-colors bg-gray-300">
-              <div className="w-4 h-4 bg-white rounded-full shadow transition-transform translate-x-0" />
-            </div>
-          </button>
-        </div>
-      )}
+      </div>
 
       {/* Header with navigation */}
       <div className="flex items-center justify-between mb-2">

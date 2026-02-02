@@ -301,27 +301,37 @@ export function getHuaweiBattery(kwh: number) {
   return huaweiBatteries[kwh] || huaweiBatteries[7]
 }
 
-// Battery upgrade pricing (€ per additional 5 kWh module)
+// Battery pricing
 export const BATTERY_UPGRADE_PRICE = {
-  deye: 1600,   // +€1,600 per 5 kWh module
-  huawei: 4000, // €4,000 per 7 kWh module
+  deye: 1600,           // +€1,600 per 5 kWh module (upgrade)
+  deyeDowngrade: 1920,  // -€1,920 per 5 kWh module (downgrade)
+  huawei: 4000,         // €4,000 per 7 kWh module
 }
 
-// Calculate battery upgrade cost
+// Calculate battery upgrade/downgrade cost
+// Returns positive for upgrades, negative for downgrades
 export function getBatteryUpgradeCost(
   brand: 'deye' | 'huawei',
   baseKwh: number,
   selectedKwh: number
 ): number {
-  if (selectedKwh <= baseKwh) return 0
+  if (selectedKwh === baseKwh) return 0
 
   if (brand === 'deye') {
-    // Deye: +€1,600 per additional 5 kWh
-    const additionalModules = (selectedKwh - baseKwh) / 5
-    return additionalModules * BATTERY_UPGRADE_PRICE.deye
+    const moduleDiff = (selectedKwh - baseKwh) / 5
+    if (moduleDiff > 0) {
+      // Upgrade: +€1,600 per additional 5 kWh
+      return moduleDiff * BATTERY_UPGRADE_PRICE.deye
+    } else {
+      // Downgrade: -€1,920 per removed 5 kWh module
+      return moduleDiff * BATTERY_UPGRADE_PRICE.deyeDowngrade
+    }
   } else {
-    // Huawei: +€4,000 per additional 7 kWh
-    const additionalModules = (selectedKwh - baseKwh) / 7
-    return additionalModules * BATTERY_UPGRADE_PRICE.huawei
+    // Huawei: €4,000 per 7 kWh module
+    // 0 kWh = no battery = -€4,000 from base (which includes 7 kWh)
+    // 7 kWh = base = €0
+    // 14 kWh = +€4,000
+    const moduleDiff = (selectedKwh - baseKwh) / 7
+    return moduleDiff * BATTERY_UPGRADE_PRICE.huawei
   }
 }
