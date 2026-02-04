@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { type RoofType, type BrandType, type GridType, calculatePower } from '@/data/packages'
-import { panels, getDeyeInverter, getHuaweiInverter, getDeyeBattery, getHuaweiBattery } from '@/data/equipment'
+import { panels, getDeyeInverter, getHuaweiInverter, getDeyeBattery, getHuaweiBattery, PANEL_SPECS, getPanelArea, INSTALLATION_WARRANTY, formatBatteryAutonomy } from '@/data/equipment'
 import { calcFromMonthlyBill, getMonthlyValues } from '@/lib/pvCalculator'
 
 interface InteractiveEquipmentProps {
@@ -48,7 +48,7 @@ export default function InteractiveEquipment({
   const powerKwp = calculatePower(panelCount)
   const monthlyProduction = monthlyValues.E_self_month_kWh
   const monthlySavings = monthlyValues.savings_eur_month
-  const panelArea = Math.round(panelCount * 2.2) // ~2.2m² per panel
+  const areaInfo = getPanelArea(panelCount) // Correct panel area calculation
 
   const openModal = (type: EquipmentType) => {
     setActiveModal(type)
@@ -223,7 +223,7 @@ export default function InteractiveEquipment({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-semibold text-solar-blue">Inversor Híbrido</span>
+                    <span className="text-sm font-semibold text-solar-blue">{inverterInfo.typeLabel}</span>
                   </div>
                   <div className="text-xs text-gray-500 mb-0.5">
                     {inverterInfo.brand} {inverterInfo.model}
@@ -236,7 +236,7 @@ export default function InteractiveEquipment({
                       {inverterInfo.power}
                     </span>
                     <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
-                      98% eficiência
+                      {inverterInfo.efficiency}% eficiência
                     </span>
                     <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
                       {inverterInfo.warranty}a garantia
@@ -280,11 +280,14 @@ export default function InteractiveEquipment({
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded">
                         {batteryInfo.capacity}
                       </span>
+                      {/* Only show cycles for Deye (Huawei has cycles: null) */}
+                      {batteryInfo.cycles && (
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
+                          ≥{batteryInfo.cycles} ciclos
+                        </span>
+                      )}
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
-                        6000+ ciclos
-                      </span>
-                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded">
-                        {batteryInfo.warranty}a garantia
+                        {batteryInfo.warrantyText}
                       </span>
                     </div>
                   </div>
@@ -325,7 +328,7 @@ export default function InteractiveEquipment({
           </div>
           <div className="mt-2 text-center">
             <span className="text-[10px] text-gray-500">
-              Garantia de instalação: <span className="font-semibold text-green-600">25 anos</span>
+              Garantia de instalação: <span className="font-semibold text-green-600">{INSTALLATION_WARRANTY.years} anos</span>
             </span>
           </div>
         </div>
@@ -347,7 +350,7 @@ export default function InteractiveEquipment({
                 <div>
                   <span className="text-xs text-blue-200 uppercase tracking-wider">
                     {activeModal === 'panel' && 'Painéis Solares'}
-                    {activeModal === 'inverter' && 'Inversor Híbrido'}
+                    {activeModal === 'inverter' && inverterInfo.typeLabel}
                     {activeModal === 'battery' && 'Bateria de Armazenamento'}
                   </span>
                   <h3 className="text-xl font-bold mt-1">
@@ -418,13 +421,13 @@ export default function InteractiveEquipment({
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">Especificações</h4>
                     <div className="grid grid-cols-2 gap-y-2 text-sm">
                       <div className="text-gray-500">Eficiência</div>
-                      <div className="text-gray-900 font-medium text-right">21.3%</div>
-                      <div className="text-gray-500">Tecnologia</div>
-                      <div className="text-gray-900 font-medium text-right">N-Type</div>
+                      <div className="text-gray-900 font-medium text-right">{PANEL_SPECS.efficiency}%</div>
+                      <div className="text-gray-500">Dimensões</div>
+                      <div className="text-gray-900 font-medium text-right">{PANEL_SPECS.dimensions}</div>
+                      <div className="text-gray-500">Peso</div>
+                      <div className="text-gray-900 font-medium text-right">{PANEL_SPECS.weight} kg</div>
                       <div className="text-gray-500">Estrutura</div>
                       <div className="text-gray-900 font-medium text-right">{panelInfo.structureShort}</div>
-                      <div className="text-gray-500">Dimensões</div>
-                      <div className="text-gray-900 font-medium text-right">1722 x 1134 mm</div>
                       <div className="text-gray-500">Potência total</div>
                       <div className="text-gray-900 font-medium text-right">{powerKwp.toFixed(1)} kWp</div>
                     </div>
@@ -438,8 +441,8 @@ export default function InteractiveEquipment({
                         <span className="font-semibold text-solar-blue">{monthlyProduction} kWh/mês</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Área no telhado:</span>
-                        <span className="font-semibold text-solar-blue">~{panelArea} m²</span>
+                        <span>Área dos módulos:</span>
+                        <span className="font-semibold text-solar-blue">{areaInfo.totalModuleAreaM2} m²</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Impacto na fatura:</span>
@@ -460,15 +463,9 @@ export default function InteractiveEquipment({
                       </svg>
                       Garantias
                     </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-xl font-bold text-green-700">{inverterInfo.warranty} anos</div>
-                        <div className="text-xs text-green-600">Garantia total</div>
-                      </div>
-                      <div>
-                        <div className="text-xl font-bold text-green-700">+5 anos</div>
-                        <div className="text-xs text-green-600">Extensão disponível</div>
-                      </div>
+                    <div>
+                      <div className="text-xl font-bold text-green-700">{inverterInfo.warranty} anos</div>
+                      <div className="text-xs text-green-600">Garantia total</div>
                     </div>
                   </div>
 
@@ -480,9 +477,9 @@ export default function InteractiveEquipment({
                       <div className="text-gray-500">Fase</div>
                       <div className="text-gray-900 font-medium text-right">{inverterInfo.phaseLabel}</div>
                       <div className="text-gray-500">Eficiência</div>
-                      <div className="text-gray-900 font-medium text-right">98%</div>
+                      <div className="text-gray-900 font-medium text-right">{inverterInfo.efficiency}%</div>
                       <div className="text-gray-500">Tipo</div>
-                      <div className="text-gray-900 font-medium text-right">Híbrido</div>
+                      <div className="text-gray-900 font-medium text-right">{inverterInfo.typeLabel.replace('Inversor ', '')}</div>
                       <div className="text-gray-500">Monitorização</div>
                       <div className="text-gray-900 font-medium text-right">App + WiFi</div>
                     </div>
@@ -491,7 +488,7 @@ export default function InteractiveEquipment({
                   <div className="bg-blue-50 border-l-4 border-solar-blue rounded-r-lg p-4">
                     <h4 className="font-semibold text-solar-blue mb-2">O que significa para si?</h4>
                     <div className="space-y-1.5 text-sm text-gray-600">
-                      <p>O inversor híbrido converte a energia DC dos painéis em AC para uso doméstico.</p>
+                      <p>{inverterInfo.backupText}</p>
                       <p className="font-medium text-solar-blue">Monitorize a produção em tempo real através da app no seu telemóvel.</p>
                     </div>
                   </div>
@@ -499,7 +496,9 @@ export default function InteractiveEquipment({
               )}
 
               {/* Battery Modal Content */}
-              {activeModal === 'battery' && batteryInfo && (
+              {activeModal === 'battery' && batteryInfo && (() => {
+                const autonomyTexts = formatBatteryAutonomy(batteryKwhForCalc, batteryInfo.dod)
+                return (
                 <>
                   <div className="bg-green-50 rounded-lg p-4">
                     <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
@@ -508,15 +507,17 @@ export default function InteractiveEquipment({
                       </svg>
                       Garantias
                     </h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className={batteryInfo.cycles ? 'grid grid-cols-2 gap-3' : ''}>
                       <div>
-                        <div className="text-xl font-bold text-green-700">{batteryInfo.warranty} anos</div>
-                        <div className="text-xs text-green-600">Garantia total</div>
+                        <div className="text-xl font-bold text-green-700">{batteryInfo.warrantyText}</div>
+                        <div className="text-xs text-green-600">Garantia</div>
                       </div>
-                      <div>
-                        <div className="text-xl font-bold text-green-700">6000+</div>
-                        <div className="text-xs text-green-600">Ciclos de vida</div>
-                      </div>
+                      {batteryInfo.cycles && (
+                        <div>
+                          <div className="text-xl font-bold text-green-700">≥{batteryInfo.cycles}</div>
+                          <div className="text-xs text-green-600">Ciclos de vida</div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -528,9 +529,7 @@ export default function InteractiveEquipment({
                       <div className="text-gray-500">Tecnologia</div>
                       <div className="text-gray-900 font-medium text-right">LiFePO4</div>
                       <div className="text-gray-500">Profundidade descarga</div>
-                      <div className="text-gray-900 font-medium text-right">90%</div>
-                      <div className="text-gray-500">Vida útil</div>
-                      <div className="text-gray-900 font-medium text-right">15+ anos</div>
+                      <div className="text-gray-900 font-medium text-right">{batteryInfo.dod}%</div>
                     </div>
                   </div>
 
@@ -538,18 +537,22 @@ export default function InteractiveEquipment({
                     <h4 className="font-semibold text-solar-blue mb-2">O que significa para si?</h4>
                     <div className="space-y-1.5 text-sm text-gray-600">
                       <div className="flex justify-between">
-                        <span>Autonomia à noite:</span>
-                        <span className="font-semibold text-solar-blue">~5-7 horas</span>
+                        <span>Autonomia:</span>
+                        <span className="font-semibold text-solar-blue">{autonomyTexts[0]}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Cobertura blackout:</span>
-                        <span className="font-semibold text-green-600">Sim (backup)</span>
+                        <span></span>
+                        <span className="font-semibold text-solar-blue">{autonomyTexts[1]}</span>
                       </div>
-                      <p className="pt-1 text-gray-500">Armazene o excedente solar para usar à noite ou em dias nublados.</p>
+                      <div className="flex justify-between pt-1">
+                        <span>Backup:</span>
+                        <span className="font-semibold text-green-600">{batteryInfo.backupText}</span>
+                      </div>
                     </div>
                   </div>
                 </>
-              )}
+                )
+              })()}
             </div>
           </div>
         </div>

@@ -3,9 +3,9 @@
 import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api'
-import CustomSelect from './CustomSelect'
 import PackageCarousel, { type SelectedPackage, type CurrentPackageInfo } from './PackageCarousel'
 import InteractiveEquipment from './InteractiveEquipment'
+import { ChatPanel } from './ChatPanel'
 import {
   type GridType,
   type RoofType,
@@ -81,6 +81,9 @@ export default function Calculator() {
   const [currentPackageIndex, setCurrentPackageIndex] = useState(0)
   const [selectedPackage, setSelectedPackage] = useState<SelectedPackage | null>(null)
   const [currentPackageInfo, setCurrentPackageInfo] = useState<CurrentPackageInfo | null>(null)
+
+  // Chat state (mobile)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -187,10 +190,8 @@ export default function Calculator() {
   }
 
   const onPlaceChanged = useCallback(() => {
-    console.log('onPlaceChanged called')
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace()
-      console.log('place:', place)
 
       if (place.geometry?.location) {
         const newLocation: Location = {
@@ -508,13 +509,27 @@ export default function Calculator() {
               )}
             </div>
 
-            {/* Roof Type */}
-            <CustomSelect
-              label="Tipo de telhado:"
-              options={roofOptions}
-              value={formData.roofType}
-              onChange={(v) => handleInputChange('roofType', v)}
-            />
+            {/* Roof Type - Segmented Control */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-solar-blue mb-2">
+                Tipo de telhado
+              </label>
+              <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden">
+                {roofOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleInputChange('roofType', option.value)}
+                    className={`flex-1 py-3 px-4 text-sm font-semibold transition-all ${
+                      formData.roofType === option.value
+                        ? 'bg-solar-orange text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Electricity Bill Slider */}
             <div className="mb-5">
@@ -539,13 +554,27 @@ export default function Calculator() {
               </div>
             </div>
 
-            {/* Grid Type */}
-            <CustomSelect
-              label="Tipo de rede:"
-              options={gridOptions}
-              value={formData.gridType}
-              onChange={(v) => handleInputChange('gridType', v)}
-            />
+            {/* Grid Type - Segmented Control */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-solar-blue mb-2">
+                Tipo de rede
+              </label>
+              <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden">
+                {gridOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleInputChange('gridType', option.value)}
+                    className={`flex-1 py-3 px-4 text-sm font-semibold transition-all ${
+                      formData.gridType === option.value
+                        ? 'bg-solar-orange text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Next Button */}
             <button
@@ -689,6 +718,50 @@ export default function Calculator() {
           </div>
         )}
       </div>
+
+      {/* Chat Panel - Only on Step 3 (Results) */}
+      {step === 3 && (
+        <>
+          {/* Toggle button - right edge */}
+          {!isChatOpen && (
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-solar-orange hover:bg-solar-orange-hover text-white px-2 py-4 rounded-l-xl shadow-lg transition-all hover:pr-3 group"
+              aria-label="Abrir chat com Helius AI"
+            >
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xl">☀️</span>
+                <span className="text-[10px] font-semibold writing-mode-vertical hidden lg:block" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+                  Helius AI
+                </span>
+              </div>
+            </button>
+          )}
+
+          {/* Slide-out sidebar overlay */}
+          <div
+            className={`fixed inset-0 z-50 transition-opacity duration-300 ${
+              isChatOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/30"
+              onClick={() => setIsChatOpen(false)}
+            />
+
+            {/* Sliding panel */}
+            <div
+              className={`absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl transition-transform duration-300 ease-out ${
+                isChatOpen ? 'translate-x-0' : 'translate-x-full'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ChatPanel isOpen={true} onClose={() => setIsChatOpen(false)} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

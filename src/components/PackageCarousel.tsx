@@ -150,6 +150,17 @@ export default function PackageCarousel({
   const availableBatteryOptions = getAvailableBatteryOptions(selectedBrand, currentPackage.panelCount)
   const baseBatteryKwh = getBaseBatteryKwh(selectedBrand, currentPackage.panelCount)
 
+  // Reset battery to base when package or brand changes
+  const prevPanelCountRef = useRef<number>(currentPackage.panelCount)
+  const prevBrandRef = useRef<BrandType>(selectedBrand)
+  useEffect(() => {
+    if (prevPanelCountRef.current !== currentPackage.panelCount || prevBrandRef.current !== selectedBrand) {
+      onBatteryKwhChange(baseBatteryKwh)
+      prevPanelCountRef.current = currentPackage.panelCount
+      prevBrandRef.current = selectedBrand
+    }
+  }, [currentPackage.panelCount, selectedBrand, baseBatteryKwh, onBatteryKwhChange])
+
   // Ensure selected battery is valid for current options
   const effectiveBatteryKwh = availableBatteryOptions.includes(selectedBatteryKwh)
     ? selectedBatteryKwh
@@ -185,27 +196,30 @@ export default function PackageCarousel({
   const paybackYears = calculatePayback(price, pvResult)
   const coveragePercent = Math.round(pvResult.autonomy_pct)
 
-  // Get battery info
-  const getBatteryCapacity = () => {
-    if (selectedBrand === 'deye') {
-      return `${effectiveBatteryKwh} kWh`
-    } else if (hasBattery) {
-      return `${effectiveBatteryKwh} kWh`
-    }
-    return null
-  }
-  const batteryCapacity = getBatteryCapacity()
+  // Get battery capacity string (null if no battery)
+  const batteryCapacity = (selectedBrand === 'deye' || hasBattery)
+    ? `${effectiveBatteryKwh} kWh`
+    : null
 
   // Get panel info
   const panelInfo = panels[roofType]
 
   // Get inverter info
   const inverterInfo = selectedBrand === 'deye'
-    ? getDeyeInverter(currentPackage.inverterKw)
-    : getHuaweiInverter(currentPackage.inverterKw)
+    ? getDeyeInverter(currentPackage.inverterKw, gridType)
+    : getHuaweiInverter(currentPackage.inverterKw, gridType)
 
-  // Calculate and show deltas when package changes
+  // Timer ref to prevent stuck deltas
+  const deltaTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Calculate and show deltas ONLY when package index changes
   useEffect(() => {
+    // Clear any existing timer
+    if (deltaTimerRef.current) {
+      clearTimeout(deltaTimerRef.current)
+      deltaTimerRef.current = null
+    }
+
     if (prevIndexRef.current !== currentIndex && prevValuesRef.current) {
       const newDeltas: DeltaValues = {
         savings: monthlySavings - prevValuesRef.current.savings,
@@ -224,17 +238,14 @@ export default function PackageCarousel({
       if (newDeltas.payback !== 0) changedFields.add('payback')
       setHighlightedFields(changedFields)
 
-      const timer = setTimeout(() => {
+      deltaTimerRef.current = setTimeout(() => {
         setShowDeltas(false)
         setHighlightedFields(new Set())
-      }, 600)
-
-      return () => clearTimeout(timer)
+        deltaTimerRef.current = null
+      }, 800)
     }
-  }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction, paybackYears])
 
-  // Store previous values before change
-  useEffect(() => {
+    // Update refs
     prevValuesRef.current = {
       savings: monthlySavings,
       coverage: coveragePercent,
@@ -242,7 +253,13 @@ export default function PackageCarousel({
       payback: paybackYears,
     }
     prevIndexRef.current = currentIndex
-  }, [currentIndex, monthlySavings, coveragePercent, monthlyProduction, paybackYears])
+
+    return () => {
+      if (deltaTimerRef.current) {
+        clearTimeout(deltaTimerRef.current)
+      }
+    }
+  }, [currentIndex]) // Only trigger on index change!
 
   // Notify parent of current package info for equipment display
   useEffect(() => {
@@ -397,16 +414,17 @@ export default function PackageCarousel({
             const upgradeCost = getBatteryUpgradeCost(selectedBrand, baseBatteryKwh, kwh)
             const isNoBattery = kwh === 0
 
-            // Format price label
+            // Format price label (pt-PT uses dot as thousands separator)
+            const formatPrice = (n: number) => n.toLocaleString('pt-PT')
             let priceLabel: string
             if (isNoBattery) {
-              priceLabel = `-€${Math.abs(upgradeCost).toLocaleString()}`
+              priceLabel = `-€${formatPrice(Math.abs(upgradeCost))}`
             } else if (isBase) {
               priceLabel = 'incluído'
             } else if (upgradeCost > 0) {
-              priceLabel = `+€${upgradeCost.toLocaleString()}`
+              priceLabel = `+€${formatPrice(upgradeCost)}`
             } else {
-              priceLabel = `-€${Math.abs(upgradeCost).toLocaleString()}`
+              priceLabel = `-€${formatPrice(Math.abs(upgradeCost))}`
             }
 
             return (
@@ -749,7 +767,7 @@ export default function PackageCarousel({
         <div className="text-center mb-2">
           <div className="text-xs text-gray-500 mb-0.5">Sistema «chave na mão»</div>
           <span className="text-4xl font-bold text-solar-orange">
-            €{price.toLocaleString()}
+            €{price.toLocaleString('pt-PT')}
           </span>
           <span className="text-sm text-gray-400 ml-2">(IVA incluído)</span>
         </div>
