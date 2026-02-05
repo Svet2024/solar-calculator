@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api'
 import PackageCarousel, { type SelectedPackage, type CurrentPackageInfo } from './PackageCarousel'
@@ -42,6 +42,21 @@ interface FormData {
   email: string
   phone: string
   consent: boolean
+  // Honeypot (anti-spam) - should remain empty
+  website: string
+}
+
+// Validation helpers
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+const PHONE_REGEX = /^(?:\+?351)?[29]\d{8}$/
+
+function validateEmail(email: string): boolean {
+  return EMAIL_REGEX.test(email.trim())
+}
+
+function validatePhone(phone: string): boolean {
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '')
+  return PHONE_REGEX.test(cleaned)
 }
 
 const defaultCenter = { lat: 38.7223, lng: -9.1393 } // Lisboa
@@ -53,7 +68,11 @@ const mapContainerStyle = {
   borderRadius: '12px',
 }
 
-export default function Calculator() {
+interface CalculatorProps {
+  onStepChange?: (step: number) => void
+}
+
+export default function Calculator({ onStepChange }: CalculatorProps) {
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<FormData>({
@@ -65,6 +84,7 @@ export default function Calculator() {
     email: '',
     phone: '',
     consent: false,
+    website: '', // Honeypot
   })
 
   // Brand selection state (Step 3)
@@ -84,6 +104,48 @@ export default function Calculator() {
 
   // Chat state (mobile)
   const [isChatOpen, setIsChatOpen] = useState(false)
+
+  // Validation errors state
+  const [errors, setErrors] = useState<{
+    name?: string
+    email?: string
+    phone?: string
+  }>({})
+
+  // Notify parent of step changes
+  useEffect(() => {
+    onStepChange?.(step)
+  }, [step, onStepChange])
+
+  // Validate a single field
+  const validateField = (field: string, value: string): string | undefined => {
+    if (!value.trim()) return undefined // Don't show error for empty fields until submit
+    switch (field) {
+      case 'email':
+        if (!validateEmail(value)) return 'Email inválido'
+        break
+      case 'phone':
+        if (!validatePhone(value)) return 'Número inválido (+351 9XX XXX XXX)'
+        break
+      case 'name':
+        if (value.trim().length < 2) return 'Nome muito curto'
+        break
+    }
+    return undefined
+  }
+
+  // Handle field blur for inline validation
+  const handleFieldBlur = (field: string, value: string) => {
+    const error = validateField(field, value)
+    setErrors(prev => ({ ...prev, [field]: error }))
+  }
+
+  // Clear error when user starts typing
+  const handleFieldFocus = (field: string) => {
+    if (errors[field as keyof typeof errors]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+  }
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -255,10 +317,24 @@ export default function Calculator() {
   }
 
   const handleStep2Submit = async () => {
-    if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()) {
-      alert('Por favor, preencha todos os campos')
+    // Inline validation
+    const newErrors: typeof errors = {}
+
+    if (!formData.name.trim() || formData.name.trim().length < 2) {
+      newErrors.name = 'Por favor, introduza o seu nome'
+    }
+    if (!formData.email.trim() || !validateEmail(formData.email)) {
+      newErrors.email = 'Email inválido'
+    }
+    if (!formData.phone.trim() || !validatePhone(formData.phone)) {
+      newErrors.phone = 'Número inválido (+351 9XX XXX XXX)'
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
+
     if (!formData.consent) {
       alert('Por favor, aceite os termos para continuar')
       return
@@ -268,7 +344,7 @@ export default function Calculator() {
 
     try {
       const crmEndpoint = process.env.NEXT_PUBLIC_CRM_API_URL || '/api/leads'
-      await fetch(crmEndpoint, {
+      const response = await fetch(crmEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -285,11 +361,20 @@ export default function Calculator() {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
+          // Honeypot (anti-spam)
+          website: formData.website,
           // Metadata
           source: 'solar-calculator',
           createdAt: new Date().toISOString(),
         }),
       })
+
+      const result = await response.json()
+      if (!response.ok) {
+        alert(result.error || 'Erro ao processar pedido')
+        setIsSubmitting(false)
+        return
+      }
     } catch (error) {
       console.error('CRM Error:', error)
     }
@@ -305,7 +390,7 @@ export default function Calculator() {
 
     try {
       const crmEndpoint = process.env.NEXT_PUBLIC_CRM_API_URL || '/api/leads'
-      await fetch(crmEndpoint, {
+      const response = await fetch(crmEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -322,6 +407,8 @@ export default function Calculator() {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
+          // Honeypot (anti-spam)
+          website: formData.website,
           // Selected package
           selectedPackage: {
             id: pkg.id,
@@ -339,11 +426,18 @@ export default function Calculator() {
         }),
       })
 
-      // Show confirmation
-      alert(`Obrigado ${formData.name}! Entraremos em contacto em breve sobre o sistema de ${pkg.panelCount} painéis.`)
+      const result = await response.json()
+      if (!response.ok) {
+        // Show error but still proceed to success page
+        console.error('API Error:', result.error)
+      }
+
+      // Go to success page
+      setStep(4)
     } catch (error) {
       console.error('CRM Error:', error)
-      alert('Pedido registado! Entraremos em contacto em breve.')
+      // Still show success page (lead might be saved)
+      setStep(4)
     }
 
     setIsSubmitting(false)
@@ -364,6 +458,7 @@ export default function Calculator() {
       email: '',
       phone: '',
       consent: false,
+      website: '', // Honeypot
     })
   }
 
@@ -604,9 +699,21 @@ export default function Calculator() {
                 autoComplete="name"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
+                onBlur={(e) => handleFieldBlur('name', e.target.value)}
+                onFocus={() => handleFieldFocus('name')}
                 placeholder="O seu nome"
-                className="w-full bg-solar-gray border-0 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
+                className={`w-full bg-solar-gray border-2 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange ${
+                  errors.name ? 'border-red-400' : 'border-transparent'
+                }`}
               />
+              {errors.name && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.name}
+                </p>
+              )}
             </div>
 
             {/* Email */}
@@ -620,9 +727,21 @@ export default function Calculator() {
                 autoComplete="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
+                onBlur={(e) => handleFieldBlur('email', e.target.value)}
+                onFocus={() => handleFieldFocus('email')}
                 placeholder="seu@email.com"
-                className="w-full bg-solar-gray border-0 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
+                className={`w-full bg-solar-gray border-2 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange ${
+                  errors.email ? 'border-red-400' : 'border-transparent'
+                }`}
               />
+              {errors.email && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             {/* Phone */}
@@ -636,8 +755,34 @@ export default function Calculator() {
                 autoComplete="tel"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
+                onBlur={(e) => handleFieldBlur('phone', e.target.value)}
+                onFocus={() => handleFieldFocus('phone')}
                 placeholder="+351 912 345 678"
-                className="w-full bg-solar-gray border-0 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
+                className={`w-full bg-solar-gray border-2 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange ${
+                  errors.phone ? 'border-red-400' : 'border-transparent'
+                }`}
+              />
+              {errors.phone && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.phone}
+                </p>
+              )}
+            </div>
+
+            {/* Honeypot field - hidden from users, bots will fill it */}
+            <div className="hidden" aria-hidden="true">
+              <label htmlFor="website">Website</label>
+              <input
+                type="text"
+                id="website"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={formData.website}
+                onChange={(e) => handleInputChange('website', e.target.value)}
               />
             </div>
 
@@ -717,6 +862,82 @@ export default function Calculator() {
             />
           </div>
         )}
+
+        {/* Step 4: Success Page */}
+        {step === 4 && selectedPackage && (
+          <div className="flex flex-col items-center justify-center flex-1 py-8">
+            {/* Success Icon */}
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-fade-in">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+
+            {/* Thank You Message */}
+            <h2 className="text-2xl font-bold text-solar-blue mb-2 text-center">
+              Obrigado, {formData.name}!
+            </h2>
+            <p className="text-gray-600 mb-6 text-center">
+              Recebemos o seu pedido.<br/>
+              Entraremos em contacto em breve.
+            </p>
+
+            {/* Order Summary */}
+            <div className="bg-solar-gray rounded-xl p-6 w-full max-w-sm mb-6">
+              <h3 className="font-semibold text-solar-blue mb-4 text-center">Resumo do pedido</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Sistema:</span>
+                  <span className="font-medium text-solar-blue capitalize">{selectedPackage.brand}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Painéis:</span>
+                  <span className="font-medium text-solar-blue">{selectedPackage.panelCount} painéis</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Potência:</span>
+                  <span className="font-medium text-solar-blue">{selectedPackage.power.toFixed(1)} kWp</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Bateria:</span>
+                  <span className="font-medium text-solar-blue">{selectedPackage.batteryCapacity || 'Sem bateria'}</span>
+                </div>
+                <div className="border-t border-gray-200 pt-3 mt-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Preço total:</span>
+                    <span className="font-bold text-solar-orange text-lg">€{selectedPackage.price.toLocaleString('pt-PT')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Options */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+              <a
+                href="https://wa.me/351934566607?text=Olá! Acabei de fazer uma simulação no vosso site e gostaria de mais informações."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                WhatsApp
+              </a>
+              <button
+                onClick={handleReset}
+                className="flex-1 bg-solar-gray hover:bg-gray-200 text-solar-blue font-semibold py-3 px-6 rounded-full transition-colors"
+              >
+                Nova simulação
+              </button>
+            </div>
+
+            {/* Additional Info */}
+            <p className="text-xs text-gray-400 mt-6 text-center">
+              Também enviámos um email de confirmação para {formData.email}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Chat Panel - Only on Step 3 (Results) */}
@@ -761,6 +982,21 @@ export default function Calculator() {
             </div>
           </div>
         </>
+      )}
+
+      {/* WhatsApp Floating Button - always visible except on success page */}
+      {step !== 4 && (
+        <a
+          href="https://wa.me/351924472548?text=Olá! Gostaria de mais informações sobre energia solar."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 left-6 z-40 w-14 h-14 bg-green-500 hover:bg-green-600 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110"
+          aria-label="Contactar via WhatsApp"
+        >
+          <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        </a>
       )}
     </div>
   )
