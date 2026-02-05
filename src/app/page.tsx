@@ -149,6 +149,9 @@ export default function Home() {
 
         <Calculator onStepChange={setCurrentStep} />
 
+        {/* Show Testimonials, FAQ, Contact only after results (step 4) */}
+        {currentStep >= 4 && (
+          <>
         {/* Testimonials Section - Slider */}
         <section className="mt-16">
           <h2 className="text-2xl font-bold text-solar-blue text-center mb-2">
@@ -387,6 +390,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+          </>
+        )}
       </div>
     </main>
   )
