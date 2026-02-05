@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase'
 
 // ============ VALIDATION ============
 
@@ -198,7 +199,48 @@ export async function POST(request: NextRequest) {
     console.log('Created:', data.createdAt)
     console.log('================')
 
-    // 9. Forward to external CRM webhook if configured
+    // 9. Save to Supabase database
+    let leadId = `lead_${Date.now()}`
+    const supabase = createServerClient()
+
+    if (supabase) {
+      try {
+        const { data: insertedLead, error: supabaseError } = await supabase
+          .from('leads')
+          .insert({
+            name: data.name,
+            email: data.email,
+            phone: normalizedPhone,
+            address: data.address,
+            lat: data.lat,
+            lng: data.lng,
+            place_id: data.placeId || null,
+            roof_type: data.roofType,
+            electricity_bill: data.electricityBill,
+            grid_type: data.gridType,
+            selected_package: data.selectedPackage || null,
+            source: data.source,
+            stage: data.stage || 'contact-submitted',
+            ip_address: clientIp,
+          })
+          .select('id')
+          .single()
+
+        if (supabaseError) {
+          console.error('[SUPABASE] Insert error:', supabaseError.message)
+        } else if (insertedLead) {
+          leadId = insertedLead.id
+          console.log('[SUPABASE] Lead saved with ID:', leadId)
+        }
+      } catch (err) {
+        console.error('[SUPABASE] Unexpected error:', err)
+        // Continue without failing - lead will still be sent to CRM if configured
+      }
+    } else {
+      console.log('[SUPABASE] Not configured, skipping database save')
+    }
+
+    // 11. Forward to external CRM webhook if configured
     const externalCrmUrl = process.env.CRM_WEBHOOK_URL
     if (externalCrmUrl) {
       try {
@@ -219,11 +261,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 10. Return success response
+    // 12. Return success response
     return NextResponse.json({
       success: true,
       message: 'Lead received',
-      leadId: `lead_${Date.now()}`
+      leadId
     })
 
   } catch (error) {
