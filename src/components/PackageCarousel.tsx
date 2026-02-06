@@ -321,8 +321,23 @@ export default function PackageCarousel({
     onIndexChange(newIndex)
   }, [currentIndex, availablePackages.length, onIndexChange])
 
+  // Track if touch was on interactive element
+  const touchOnInteractive = useRef<boolean>(false)
+
   const handleTouchStart = (e: TouchEvent) => {
+    // Check if touch started on an interactive element (button, input, etc.)
+    const target = e.target as HTMLElement
+    const isInteractive = target.closest('button, input, a, [role="button"]')
+    touchOnInteractive.current = !!isInteractive
+
     touchStartX.current = e.touches[0].clientX
+    touchEndX.current = e.touches[0].clientX
+
+    console.log('[TOUCH START]', {
+      x: e.touches[0].clientX,
+      target: target.tagName,
+      isInteractive: touchOnInteractive.current
+    })
   }
 
   const handleTouchMove = (e: TouchEvent) => {
@@ -333,10 +348,26 @@ export default function PackageCarousel({
     const diff = touchStartX.current - touchEndX.current
     const minSwipeDistance = 50
 
+    console.log('[TOUCH END]', {
+      startX: touchStartX.current,
+      endX: touchEndX.current,
+      diff,
+      wasOnInteractive: touchOnInteractive.current,
+      willSwipe: Math.abs(diff) > minSwipeDistance && !touchOnInteractive.current
+    })
+
+    // Don't trigger swipe if touch started on interactive element
+    if (touchOnInteractive.current) {
+      touchOnInteractive.current = false
+      return
+    }
+
     if (Math.abs(diff) > minSwipeDistance) {
       if (diff > 0) {
+        console.log('[SWIPE] Next')
         goToNext()
       } else {
+        console.log('[SWIPE] Previous')
         goToPrevious()
       }
     }
@@ -760,7 +791,7 @@ export default function PackageCarousel({
       </div>
 
       {/* Spacer for mobile fixed CTA */}
-      <div className="h-40 md:hidden" />
+      <div className="h-48 md:hidden" />
 
       {/* Price and CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white pt-3 pb-[env(safe-area-inset-bottom,8px)] px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:static md:z-auto md:shadow-none md:px-0 md:pt-3 md:pb-2 md:mt-auto">
