@@ -1059,8 +1059,8 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
         </a>
       )}
 
-      {/* FAQ, Reviews & Contact - Below main grid on success page */}
-      {step === 4 && selectedPackage && (
+      {/* FAQ, Reviews & Contact - Below main grid on equipment and success pages */}
+      {(step === 3 || (step === 4 && selectedPackage)) && (
         <div className="col-span-full mt-8 space-y-8 max-w-[1280px] mx-auto">
           {/* FAQ Section */}
           <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
