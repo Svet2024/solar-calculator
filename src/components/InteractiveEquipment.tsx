@@ -15,6 +15,7 @@ interface InteractiveEquipmentProps {
   hasBattery: boolean
   batteryKwh?: number // For Deye (variable battery sizes)
   electricityBill: number // Monthly bill for PV calculations
+  onModalChange?: (isOpen: boolean) => void // Notify parent when modal opens/closes
 }
 
 type EquipmentType = 'panel' | 'inverter' | 'battery' | null
@@ -28,6 +29,7 @@ export default function InteractiveEquipment({
   hasBattery,
   batteryKwh,
   electricityBill,
+  onModalChange,
 }: InteractiveEquipmentProps) {
   const [activeModal, setActiveModal] = useState<EquipmentType>(null)
   const [hoveredItem, setHoveredItem] = useState<EquipmentType>(null)
@@ -52,10 +54,12 @@ export default function InteractiveEquipment({
 
   const openModal = (type: EquipmentType) => {
     setActiveModal(type)
+    onModalChange?.(true)
   }
 
   const closeModal = () => {
     setActiveModal(null)
+    onModalChange?.(false)
   }
 
   // Hotspot positions for each brand - top-left corner of each equipment
@@ -160,7 +164,7 @@ export default function InteractiveEquipment({
               onClick={() => openModal('panel')}
               onMouseEnter={() => setHoveredItem('panel')}
               onMouseLeave={() => setHoveredItem(null)}
-              className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left ${
+              className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left active:scale-[0.99] ${
                 hoveredItem === 'panel'
                   ? 'border-solar-blue bg-blue-50/50 shadow-sm'
                   : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
@@ -207,7 +211,7 @@ export default function InteractiveEquipment({
               onClick={() => openModal('inverter')}
               onMouseEnter={() => setHoveredItem('inverter')}
               onMouseLeave={() => setHoveredItem(null)}
-              className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left ${
+              className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left active:scale-[0.99] ${
                 hoveredItem === 'inverter'
                   ? 'border-solar-blue bg-blue-50/50 shadow-sm'
                   : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'
@@ -255,7 +259,7 @@ export default function InteractiveEquipment({
                 onClick={() => openModal('battery')}
                 onMouseEnter={() => setHoveredItem('battery')}
                 onMouseLeave={() => setHoveredItem(null)}
-                className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left ${
+                className={`w-full p-3 rounded-lg border transition-all cursor-pointer text-left active:scale-[0.99] ${
                   hoveredItem === 'battery'
                     ? 'border-solar-blue bg-blue-50/50 shadow-sm'
                     : 'border-gray-100 bg-gray-50/50 hover:border-gray-200'

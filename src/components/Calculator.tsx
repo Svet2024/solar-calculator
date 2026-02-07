@@ -105,6 +105,9 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
   // Chat state (mobile)
   const [isChatOpen, setIsChatOpen] = useState(false)
 
+  // Equipment modal state (to hide sticky footer)
+  const [isEquipmentModalOpen, setIsEquipmentModalOpen] = useState(false)
+
   // Validation errors state
   const [errors, setErrors] = useState<{
     name?: string
@@ -465,7 +468,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-6 lg:min-h-[85vh] max-w-[1280px] mx-auto">
       {/* Left Panel - Map or Hero Image */}
-      <div className="card flex flex-col items-center justify-center min-h-[700px] lg:h-auto order-2 lg:order-1 overflow-hidden p-4">
+      <div id="map-section" className="card flex flex-col items-center justify-center min-h-[700px] lg:h-auto order-2 lg:order-1 overflow-hidden p-4">
         {step === 1 && isLoaded && !loadError ? (
           <div className="relative w-full h-full min-h-[450px]">
             <GoogleMap
@@ -546,6 +549,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
             hasBattery={selectedBrand === 'deye' || hasBattery}
             batteryKwh={currentPackageInfo.batteryKwh ?? undefined}
             electricityBill={formData.electricityBill}
+            onModalChange={setIsEquipmentModalOpen}
           />
         ) : (
           <div className="relative w-full h-full min-h-[450px]">
@@ -569,40 +573,79 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
               SIMULE O SEU SISTEMA
             </h2>
 
-            {/* Address with Autocomplete */}
-            <div className="mb-5">
+            {/* Address with Autocomplete + Geolocation button */}
+            <div className="mb-3">
               <label className="block text-sm font-semibold text-solar-blue mb-2">
                 Endereço completo:
               </label>
-              {isLoaded ? (
-                <Autocomplete
-                  onLoad={onAutocompleteLoad}
-                  onPlaceChanged={onPlaceChanged}
-                  options={autocompleteOptions}
-                >
+              <div className="relative">
+                {isLoaded ? (
+                  <Autocomplete
+                    onLoad={onAutocompleteLoad}
+                    onPlaceChanged={onPlaceChanged}
+                    options={autocompleteOptions}
+                  >
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      name="address"
+                      defaultValue={formData.location.address}
+                      placeholder="Comece a escrever o seu endereço..."
+                      className="w-full bg-solar-gray border-0 rounded-lg pl-4 pr-12 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
+                    />
+                  </Autocomplete>
+                ) : (
                   <input
-                    ref={inputRef}
                     type="text"
                     name="address"
-                    defaultValue={formData.location.address}
-                    placeholder="Comece a escrever o seu endereço..."
-                    className="w-full bg-solar-gray border-0 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
+                    value={formData.location.address}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      location: { ...prev.location, address: e.target.value }
+                    }))}
+                    placeholder="Rua, número, cidade..."
+                    className="w-full bg-solar-gray border-0 rounded-lg pl-4 pr-12 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
                   />
-                </Autocomplete>
-              ) : (
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.location.address}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    location: { ...prev.location, address: e.target.value }
-                  }))}
-                  placeholder="Rua, número, cidade..."
-                  className="w-full bg-solar-gray border-0 rounded-lg px-4 py-3 text-solar-blue placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-solar-orange"
-                />
-              )}
+                )}
+                {/* Geolocation button inside input */}
+                <button
+                  onClick={handleGetLocation}
+                  disabled={isLocating}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-solar-blue hover:text-solar-orange transition-colors disabled:opacity-50"
+                  title="Usar a minha localização"
+                  type="button"
+                >
+                  {isLocating ? (
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
+
+            {/* Scroll to map button - mobile only */}
+            <button
+              onClick={() => {
+                const mapSection = document.getElementById('map-section')
+                if (mapSection) {
+                  mapSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              }}
+              className="flex items-center justify-center gap-2 w-full mb-5 py-2 text-sm text-solar-blue hover:text-solar-orange transition-colors lg:hidden"
+              type="button"
+            >
+              <span>Escolher o meu telhado no mapa</span>
+              <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </button>
 
             {/* Roof Type - Segmented Control */}
             <div className="mb-5">
@@ -859,6 +902,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
               onBatteryChange={setHasBattery}
               selectedBatteryKwh={selectedBatteryKwh}
               onBatteryKwhChange={setSelectedBatteryKwh}
+              hideFooter={isEquipmentModalOpen}
             />
           </div>
         )}
@@ -936,6 +980,88 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
             <p className="text-xs text-gray-400 mt-6 text-center">
               Também enviámos um email de confirmação para {formData.email}
             </p>
+
+            {/* FAQ Section */}
+            <div className="w-full max-w-md mt-8 border-t border-gray-200 pt-6">
+              <h3 className="font-semibold text-solar-blue mb-4 text-center">Perguntas Frequentes</h3>
+              <div className="space-y-3">
+                <details className="bg-gray-50 rounded-lg p-3 group">
+                  <summary className="font-medium text-sm text-solar-blue cursor-pointer list-none flex justify-between items-center">
+                    Quanto tempo demora a instalação?
+                    <svg className="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <p className="text-xs text-gray-600 mt-2">A instalação típica demora 1-2 dias para sistemas residenciais. Agendamos conforme a sua disponibilidade.</p>
+                </details>
+                <details className="bg-gray-50 rounded-lg p-3 group">
+                  <summary className="font-medium text-sm text-solar-blue cursor-pointer list-none flex justify-between items-center">
+                    Preciso de licença camarária?
+                    <svg className="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <p className="text-xs text-gray-600 mt-2">Para autoconsumo até 30 kW não é necessária licença. Tratamos de toda a documentação para a DGEG.</p>
+                </details>
+                <details className="bg-gray-50 rounded-lg p-3 group">
+                  <summary className="font-medium text-sm text-solar-blue cursor-pointer list-none flex justify-between items-center">
+                    Qual é a garantia do sistema?
+                    <svg className="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <p className="text-xs text-gray-600 mt-2">Painéis: 25 anos de performance. Inversor: 10-12 anos. Bateria: 10 anos. Instalação: 5 anos.</p>
+                </details>
+              </div>
+            </div>
+
+            {/* Reviews Section */}
+            <div className="w-full max-w-md mt-6 border-t border-gray-200 pt-6">
+              <h3 className="font-semibold text-solar-blue mb-4 text-center">O que dizem os nossos clientes</h3>
+              <div className="space-y-3">
+                <div className="bg-white border border-gray-100 rounded-lg p-3 shadow-sm">
+                  <div className="flex items-center gap-1 mb-1">
+                    {[1,2,3,4,5].map(i => (
+                      <svg key={i} className="w-3.5 h-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-600 italic">"Excelente serviço! A equipa foi muito profissional e a instalação foi rápida. Já estou a poupar na fatura."</p>
+                  <p className="text-[10px] text-gray-400 mt-1">— Maria S., Lisboa</p>
+                </div>
+                <div className="bg-white border border-gray-100 rounded-lg p-3 shadow-sm">
+                  <div className="flex items-center gap-1 mb-1">
+                    {[1,2,3,4,5].map(i => (
+                      <svg key={i} className="w-3.5 h-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-600 italic">"Recomendo a 100%. Desde o primeiro contacto até à instalação, tudo correu perfeitamente."</p>
+                  <p className="text-[10px] text-gray-400 mt-1">— João P., Porto</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Section */}
+            <div className="w-full max-w-md mt-6 border-t border-gray-200 pt-6 pb-4">
+              <h3 className="font-semibold text-solar-blue mb-4 text-center">Contacte-nos</h3>
+              <div className="grid grid-cols-2 gap-3 text-center text-sm">
+                <a href="tel:+351934566607" className="flex flex-col items-center gap-1 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <svg className="w-5 h-5 text-solar-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                  <span className="text-gray-600">+351 934 566 607</span>
+                </a>
+                <a href="mailto:info@svetsolar.pt" className="flex flex-col items-center gap-1 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <svg className="w-5 h-5 text-solar-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-gray-600">info@svetsolar.pt</span>
+                </a>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -39,6 +39,7 @@ interface PackageCarouselProps {
   onBatteryChange: (hasBattery: boolean) => void
   selectedBatteryKwh: number
   onBatteryKwhChange: (kwh: number) => void
+  hideFooter?: boolean // Hide sticky footer when equipment modal is open
 }
 
 // Get available battery options based on brand and panel count
@@ -100,6 +101,7 @@ export default function PackageCarousel({
   onBatteryChange,
   selectedBatteryKwh,
   onBatteryKwhChange,
+  hideFooter = false,
 }: PackageCarouselProps) {
   const touchStartX = useRef<number>(0)
   const touchEndX = useRef<number>(0)
@@ -321,53 +323,60 @@ export default function PackageCarousel({
     onIndexChange(newIndex)
   }, [currentIndex, availablePackages.length, onIndexChange])
 
-  // Track if touch was on interactive element
+  // Track touch state for swipe detection
   const touchOnInteractive = useRef<boolean>(false)
+  const touchStartY = useRef<number>(0)
+  const touchEndY = useRef<number>(0)
+  const isSwipingRef = useRef<boolean>(false)
 
   const handleTouchStart = (e: TouchEvent) => {
-    // Check if touch started on an interactive element (button, input, etc.)
+    // Check if touch started on an interactive element
     const target = e.target as HTMLElement
-    const isInteractive = target.closest('button, input, a, [role="button"]')
+    const isInteractive = target.closest('button, input, a, [role="button"], .battery-selector, .brand-selector')
     touchOnInteractive.current = !!isInteractive
 
     touchStartX.current = e.touches[0].clientX
     touchEndX.current = e.touches[0].clientX
-
-    console.log('[TOUCH START]', {
-      x: e.touches[0].clientX,
-      target: target.tagName,
-      isInteractive: touchOnInteractive.current
-    })
+    touchStartY.current = e.touches[0].clientY
+    touchEndY.current = e.touches[0].clientY
+    isSwipingRef.current = false
   }
 
   const handleTouchMove = (e: TouchEvent) => {
     touchEndX.current = e.touches[0].clientX
+    touchEndY.current = e.touches[0].clientY
+
+    // Detect if this is a horizontal swipe (for visual feedback if needed)
+    const diffX = Math.abs(touchStartX.current - touchEndX.current)
+    const diffY = Math.abs(touchStartY.current - touchEndY.current)
+    if (diffX > 20 && diffX > diffY * 1.5) {
+      isSwipingRef.current = true
+    }
   }
 
   const handleTouchEnd = () => {
-    const diff = touchStartX.current - touchEndX.current
-    const minSwipeDistance = 50
+    const diffX = touchStartX.current - touchEndX.current
+    const diffY = Math.abs(touchStartY.current - touchEndY.current)
+    const minSwipeDistance = 80 // Increased from 50 to prevent accidental swipes
 
-    console.log('[TOUCH END]', {
-      startX: touchStartX.current,
-      endX: touchEndX.current,
-      diff,
-      wasOnInteractive: touchOnInteractive.current,
-      willSwipe: Math.abs(diff) > minSwipeDistance && !touchOnInteractive.current
-    })
-
-    // Don't trigger swipe if touch started on interactive element
+    // Don't trigger swipe if:
+    // 1. Touch started on interactive element
+    // 2. Vertical movement is greater than horizontal (user is scrolling)
+    // 3. Horizontal distance is too small
     if (touchOnInteractive.current) {
       touchOnInteractive.current = false
       return
     }
 
-    if (Math.abs(diff) > minSwipeDistance) {
-      if (diff > 0) {
-        console.log('[SWIPE] Next')
+    // Ignore if vertical scroll is dominant
+    if (diffY > Math.abs(diffX) * 0.8) {
+      return
+    }
+
+    if (Math.abs(diffX) > minSwipeDistance) {
+      if (diffX > 0) {
         goToNext()
       } else {
-        console.log('[SWIPE] Previous')
         goToPrevious()
       }
     }
@@ -391,21 +400,16 @@ export default function PackageCarousel({
   const recommendedIndex = 0
 
   return (
-    <div
-      className="flex flex-col flex-1"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="flex flex-col flex-1">
       {/* Brand Selection */}
-      <div className="mb-3">
+      <div className="mb-3 brand-selector">
         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
           Escolha a marca do equipamento
         </label>
         <div className="flex gap-2">
           <button
             onClick={() => onBrandChange('deye')}
-            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all border-2 ${
+            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all border-2 active:scale-[0.98] ${
               selectedBrand === 'deye'
                 ? 'bg-solar-orange text-white border-solar-orange shadow-md'
                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
@@ -422,7 +426,7 @@ export default function PackageCarousel({
           </button>
           <button
             onClick={() => onBrandChange('huawei')}
-            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all border-2 ${
+            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all border-2 active:scale-[0.98] ${
               selectedBrand === 'huawei'
                 ? 'bg-solar-blue text-white border-solar-blue shadow-md'
                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
@@ -434,7 +438,7 @@ export default function PackageCarousel({
       </div>
 
       {/* Battery Capacity Selector */}
-      <div className="mb-3">
+      <div className="mb-3 battery-selector">
         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
           Capacidade da bateria
         </label>
@@ -468,7 +472,7 @@ export default function PackageCarousel({
                     onBatteryChange(kwh > 0)
                   }
                 }}
-                className={`flex-1 py-2 px-2 rounded-lg text-sm font-semibold transition-all border-2 ${
+                className={`flex-1 py-2 px-2 rounded-lg text-sm font-semibold transition-all border-2 active:scale-[0.98] ${
                   isSelected
                     ? isNoBattery
                       ? 'bg-gray-500 text-white border-gray-500 shadow-md'
@@ -490,61 +494,69 @@ export default function PackageCarousel({
         </div>
       </div>
 
-      {/* Header with navigation */}
-      <div className="flex items-center justify-between mb-2">
-        <button
-          onClick={goToPrevious}
-          className="p-2 hover:bg-solar-gray rounded-full transition-colors flex-shrink-0"
-          aria-label="Anterior"
-        >
-          <svg className="w-6 h-6 text-solar-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
+      {/* Swipeable Header Area with navigation */}
+      <div
+        className="touch-pan-y"
+        style={{ touchAction: 'pan-y' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={goToPrevious}
+            className="p-2 hover:bg-solar-gray rounded-full transition-colors flex-shrink-0 active:scale-95"
+            aria-label="Anterior"
+          >
+            <svg className="w-6 h-6 text-solar-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-        <div className="text-center flex-1">
-          <h3 className="text-2xl font-bold text-solar-blue">
-            {currentPackage.panelCount} Painéis
-          </h3>
-          <p className="text-sm text-gray-500">
-            {panelInfo.brand} {panelInfo.wattage}W + {inverterInfo.brand}
-          </p>
-          {currentIndex === recommendedIndex && (
-            <span className="inline-block mt-1 px-3 py-1 bg-solar-orange text-white text-xs font-bold rounded-full">
-              Recomendado
-            </span>
-          )}
+          <div className="text-center flex-1 select-none">
+            <h3 className="text-2xl font-bold text-solar-blue">
+              {currentPackage.panelCount} Painéis
+            </h3>
+            <p className="text-sm text-gray-500">
+              {panelInfo.brand} {panelInfo.wattage}W + {inverterInfo.brand}
+            </p>
+            {currentIndex === recommendedIndex && (
+              <span className="inline-block mt-1 px-3 py-1 bg-solar-orange text-white text-xs font-bold rounded-full">
+                Recomendado
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={goToNext}
+            className="p-2 hover:bg-solar-gray rounded-full transition-colors flex-shrink-0 active:scale-95"
+            aria-label="Seguinte"
+          >
+            <svg className="w-6 h-6 text-solar-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
 
-        <button
-          onClick={goToNext}
-          className="p-2 hover:bg-solar-gray rounded-full transition-colors flex-shrink-0"
-          aria-label="Seguinte"
-        >
-          <svg className="w-6 h-6 text-solar-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Dot indicators */}
-      <div className="flex justify-center gap-2 mb-3">
-        {availablePackages.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => onIndexChange(index)}
-            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-              index === currentIndex ? 'bg-solar-orange scale-125' : 'bg-gray-300 hover:bg-gray-400'
-            }`}
-            aria-label={`Ir para pacote ${index + 1}`}
-          />
-        ))}
+        {/* Dot indicators */}
+        <div className="flex justify-center gap-2 mb-3">
+          {availablePackages.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => onIndexChange(index)}
+              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                index === currentIndex ? 'bg-solar-orange scale-125' : 'bg-gray-300 hover:bg-gray-400'
+              }`}
+              aria-label={`Ir para pacote ${index + 1}`}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Animated Summary Stats - Savings, Payback, Coverage */}
-      <div className="animated-border mb-3">
+      <div className="animated-border mb-3" onClick={(e) => e.stopPropagation()}>
         <div className="bg-white rounded-xl p-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2" style={{ touchAction: 'auto' }}>
             {/* Savings */}
             <div className={`text-center group cursor-default relative transition-all duration-300 rounded-lg ${highlightedFields.has('savings') ? 'bg-green-50 ring-2 ring-green-300' : ''}`}>
               <div className="relative">
@@ -615,7 +627,7 @@ export default function PackageCarousel({
       </div>
 
       {/* System Characteristics - Power, Battery, Production */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      <div className="grid grid-cols-3 gap-2 mb-3" onClick={(e) => e.stopPropagation()}>
         {/* Panel Power */}
         <div className={`bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2.5 text-center hover:shadow-md transition-all duration-300 cursor-default group ${highlightedFields.has('production') ? 'ring-2 ring-blue-400' : ''}`}>
           <div className="w-8 h-8 mx-auto mb-1 bg-solar-blue rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -666,7 +678,7 @@ export default function PackageCarousel({
       </div>
 
       {/* Production vs Consumption Chart */}
-      <div className="bg-white rounded-lg p-3 mb-3 border border-gray-100">
+      <div className="bg-white rounded-lg p-3 mb-3 border border-gray-100" onClick={(e) => e.stopPropagation()}>
         {/* Legend */}
         <div className="flex justify-center gap-6 mb-2 text-[10px]">
           <div className="flex items-center gap-1.5">
@@ -791,10 +803,10 @@ export default function PackageCarousel({
       </div>
 
       {/* Spacer for mobile fixed CTA */}
-      <div className="h-48 md:hidden" />
+      {!hideFooter && <div className="h-52 md:hidden" />}
 
-      {/* Price and CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white pt-3 pb-[env(safe-area-inset-bottom,8px)] px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:static md:z-auto md:shadow-none md:px-0 md:pt-3 md:pb-2 md:mt-auto">
+      {/* Price and CTA - hidden when equipment modal is open on mobile */}
+      <div className={`${hideFooter ? 'hidden md:block' : ''} fixed bottom-0 left-0 right-0 z-50 bg-white pt-3 pb-[env(safe-area-inset-bottom,8px)] px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:static md:z-auto md:shadow-none md:px-0 md:pt-3 md:pb-2 md:mt-auto`}>
         <div className="text-center mb-2">
           <div className="text-xs text-gray-500 mb-0.5">Sistema «chave na mão»</div>
           <span className="text-4xl font-bold text-solar-orange">
@@ -804,7 +816,7 @@ export default function PackageCarousel({
         </div>
         <button
           onClick={handleSelect}
-          className="w-full bg-solar-orange hover:bg-solar-orange-hover text-white font-bold py-3.5 px-6 rounded-full transition-all hover:scale-[1.02] hover:shadow-lg text-lg"
+          className="w-full bg-solar-orange hover:bg-solar-orange-hover text-white font-bold py-3.5 px-6 rounded-full transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] text-lg"
         >
           Receber uma proposta
         </button>
