@@ -107,6 +107,9 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
   // Equipment modal state (to hide sticky footer)
   const [isEquipmentModalOpen, setIsEquipmentModalOpen] = useState(false)
 
+  // Reviews carousel state
+  const [reviewIndex, setReviewIndex] = useState(0)
+
   // Validation errors state
   const [errors, setErrors] = useState<{
     name?: string
@@ -1062,72 +1065,79 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
       {(step === 3 || (step === 4 && selectedPackage)) && (
         <div className="col-span-full order-last mt-8 max-w-[1280px] mx-auto space-y-8">
 
-          {/* Testemunhos dos nossos clientes */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-            <h3 className="text-xl font-bold text-solar-blue mb-1 text-center">Testemunhos dos nossos clientes</h3>
-            <p className="text-gray-500 text-sm text-center mb-6">Mais de 500 Instalações em Portugal</p>
-            <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
-              {/* Review 1 */}
-              <div className="min-w-[280px] flex-1 bg-gray-50 rounded-xl p-5 snap-start">
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                  ))}
-                  <svg className="w-5 h-5 ml-auto" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                </div>
-                <p className="text-sm text-gray-700 mb-3">&ldquo;Equipa fantástica e profissional... recomendo&rdquo;</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">PR</div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-800">Paulo Rodrigues</p>
-                    <p className="text-xs text-gray-400">16 Março 2025</p>
+          {/* Testemunhos dos nossos clientes - Carousel */}
+          {(() => {
+            const reviews = [
+              { name: 'Vivenda Oliveirinha', initials: 'VO', date: '14 Março 2025', stars: 5, text: 'Hele goede ervaring, bij ons 16 panelen, batterij en autolader geleverd en gemonteerd. Deskundig advies, alles in goed overleg met d...', bg: 'bg-orange-100', color: 'text-orange-600' },
+              { name: 'Fernando Almeida', initials: 'FA', date: '14 Fevereiro 2025', stars: 5, text: 'Trabalho 5 estrelas. Comunicação impecável. Explicações claras. Recomendo e voltarei a chamar...', bg: 'bg-green-100', color: 'text-green-600' },
+              { name: 'Paul Wratislaw', initials: 'PW', date: '13 Fevereiro 2025', stars: 5, text: 'Getting a solar panel PV installation is a big decision for most of us and the uncertainty of how the installation will work out means th...', bg: 'bg-blue-100', color: 'text-blue-600' },
+              { name: 'Mark Hartnell', initials: 'M', date: '4 Fevereiro 2025', stars: 5, text: 'Yuri and his team are great. Super helpful, clean, tidy and respectful from beginning to end. From planning to installation to support,...', bg: 'bg-purple-100', color: 'text-purple-600' },
+              { name: 'Brian O Connell', initials: 'B', date: '27 Janeiro 2025', stars: 5, text: 'Yury and the team were so helpful from the outset, right through to...', bg: 'bg-teal-100', color: 'text-teal-600' },
+              { name: 'Nuno Camisao', initials: 'NC', date: '27 Janeiro 2025', stars: 5, text: 'Serviço de qualidade com profissionalismo, recomendo.', bg: 'bg-indigo-100', color: 'text-indigo-600' },
+              { name: 'Free V', initials: 'FV', date: '27 Janeiro 2025', stars: 5, text: 'This is a very good supplier, perfect solution, the construction workers are very serious and professional, worth recommending.', bg: 'bg-rose-100', color: 'text-rose-600' },
+            ]
+            const maxIndex = reviews.length - 3
+            const visibleReviews = reviews.slice(reviewIndex, reviewIndex + 3)
+            return (
+              <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                <h3 className="text-xl font-bold text-solar-blue mb-1 text-center">Testemunhos dos nossos clientes</h3>
+                <p className="text-gray-500 text-sm text-center mb-6">Mais de 500 Instalações em Portugal</p>
+                <div className="relative">
+                  {/* Left arrow */}
+                  <button
+                    onClick={() => setReviewIndex(Math.max(0, reviewIndex - 1))}
+                    className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center transition-opacity ${reviewIndex === 0 ? 'opacity-30 cursor-default' : 'hover:bg-gray-50 cursor-pointer'}`}
+                    disabled={reviewIndex === 0}
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+                  </button>
+                  {/* Reviews */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-6">
+                    {visibleReviews.map((review, idx) => (
+                      <div key={reviewIndex + idx} className="bg-gray-50 rounded-xl p-5">
+                        <div className="flex items-center gap-1 mb-2">
+                          {[...Array(review.stars)].map((_, i) => (
+                            <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                          ))}
+                          <svg className="w-5 h-5 ml-auto" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-3 line-clamp-3">&ldquo;{review.text}&rdquo;</p>
+                        <p className="text-xs text-gray-400 mb-2">Consulte Mais informação</p>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full ${review.bg} flex items-center justify-center text-xs font-bold ${review.color}`}>{review.initials}</div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-800">{review.name}</p>
+                            <p className="text-xs text-gray-400">{review.date}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                  {/* Right arrow */}
+                  <button
+                    onClick={() => setReviewIndex(Math.min(maxIndex, reviewIndex + 1))}
+                    className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center transition-opacity ${reviewIndex >= maxIndex ? 'opacity-30 cursor-default' : 'hover:bg-gray-50 cursor-pointer'}`}
+                    disabled={reviewIndex >= maxIndex}
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                  </button>
+                </div>
+                {/* Dots indicator */}
+                <div className="flex justify-center gap-1.5 mt-4">
+                  {Array.from({ length: maxIndex + 1 }).map((_, i) => (
+                    <button key={i} onClick={() => setReviewIndex(i)} className={`w-2 h-2 rounded-full transition-colors ${i === reviewIndex ? 'bg-solar-orange' : 'bg-gray-300'}`} />
+                  ))}
+                </div>
+                {/* Trustindex badge */}
+                <div className="flex justify-center mt-4">
+                  <a href="https://www.trustindex.io/reviews/svetsolar.pt" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-green-600 text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-green-700 transition-colors">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                    Certificado: Trustindex
+                  </a>
                 </div>
               </div>
-              {/* Review 2 */}
-              <div className="min-w-[280px] flex-1 bg-gray-50 rounded-xl p-5 snap-start">
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(4)].map((_, i) => (
-                    <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                  ))}
-                  <svg className="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                  <svg className="w-5 h-5 ml-auto" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                </div>
-                <p className="text-sm text-gray-700 mb-3">&ldquo;Trabalho 5 estrelas. Comunicação impecável. Explicações claras. Recomendo e voltarei a chamar...&rdquo;</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-600">FA</div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-800">Fernando Almeida</p>
-                    <p className="text-xs text-gray-400">14 Fevereiro 2025</p>
-                  </div>
-                </div>
-              </div>
-              {/* Review 3 */}
-              <div className="min-w-[280px] flex-1 bg-gray-50 rounded-xl p-5 snap-start">
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                  ))}
-                  <svg className="w-5 h-5 ml-auto" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                </div>
-                <p className="text-sm text-gray-700 mb-3">&ldquo;Yuri and his team are great. Super helpful, clean, tidy and respectful from beginning to end. From planning to installation to support...&rdquo;</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-600">MH</div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-800">Mark Hartnell</p>
-                    <p className="text-xs text-gray-400">4 Fevereiro 2025</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Trustindex badge */}
-            <div className="flex justify-center mt-4">
-              <a href="https://www.trustindex.io/reviews/svetsolar.pt" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-green-600 text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-green-700 transition-colors">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                Certificado: Trustindex
-              </a>
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Perguntas Frequentes (FAQ) */}
           <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
@@ -1251,6 +1261,14 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
                 <a href="mailto:geral@svetsolar.pt" className="flex-1 flex items-center justify-center gap-2 bg-solar-orange hover:bg-orange-600 text-white font-medium py-3 rounded-full transition-colors">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                   Enviar Email
+                </a>
+              </div>
+              <div className="flex justify-center gap-4 pt-4">
+                <a href="https://www.instagram.com/svetsolar.pt/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                </a>
+                <a href="https://www.facebook.com/SvetSolarEnergia" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-[#1877F2] rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                 </a>
               </div>
             </div>
