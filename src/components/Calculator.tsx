@@ -48,15 +48,14 @@ interface FormData {
 
 // Validation helpers
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-const PHONE_REGEX = /^(?:\+?351)?[29]\d{8}$/
-
 function validateEmail(email: string): boolean {
   return EMAIL_REGEX.test(email.trim())
 }
 
 function validatePhone(phone: string): boolean {
   const cleaned = phone.replace(/[\s\-\(\)]/g, '')
-  return PHONE_REGEX.test(cleaned)
+  // Accept international numbers: at least 7 digits, optionally starting with +
+  return /^\+?\d{7,15}$/.test(cleaned)
 }
 
 const defaultCenter = { lat: 38.7223, lng: -9.1393 } // Lisboa
@@ -128,7 +127,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
         if (!validateEmail(value)) return 'Email inválido'
         break
       case 'phone':
-        if (!validatePhone(value)) return 'Número inválido (+351 9XX XXX XXX)'
+        if (!validatePhone(value)) return 'Número de telefone inválido'
         break
       case 'name':
         if (value.trim().length < 2) return 'Nome muito curto'
@@ -330,7 +329,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
       newErrors.email = 'Email inválido'
     }
     if (!formData.phone.trim() || !validatePhone(formData.phone)) {
-      newErrors.phone = 'Número inválido (+351 9XX XXX XXX)'
+      newErrors.phone = 'Número de telefone inválido'
     }
 
     if (Object.keys(newErrors).length > 0) {
