@@ -1061,8 +1061,8 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
         </a>
       )}
 
-      {/* Testimonials + FAQ + Contacts - Below main grid on success page only */}
-      {step === 4 && selectedPackage && (
+      {/* Testimonials + FAQ + Contacts - Below main grid on equipment page only */}
+      {step === 3 && (
         <div className="col-span-full order-last mt-8 max-w-[1280px] mx-auto space-y-8">
 
           {/* Testemunhos dos nossos clientes - Carousel */}
