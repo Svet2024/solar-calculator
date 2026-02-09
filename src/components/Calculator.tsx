@@ -1058,124 +1058,57 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
         </a>
       )}
 
-      {/* FAQ, Reviews & Contact - Below main grid on equipment and success pages */}
+      {/* FAQ - Below main grid on equipment and success pages */}
       {(step === 3 || (step === 4 && selectedPackage)) && (
-        <div className="col-span-full order-last mt-8 space-y-8 max-w-[1280px] mx-auto">
-          {/* FAQ Section */}
+        <div className="col-span-full order-last mt-8 max-w-[1280px] mx-auto">
           <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
             <h3 className="text-xl font-bold text-solar-blue mb-6 text-center">Perguntas Frequentes</h3>
-            <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-              <details className="bg-solar-gray rounded-lg p-4 group">
-                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center">
-                  Quanto tempo demora a instalação?
-                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="space-y-3 max-w-4xl mx-auto">
+              <details className="border-b border-gray-200 pb-3 group">
+                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center py-2">
+                  Quais são as vantagens da geração de energia solar?
+                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </summary>
-                <p className="text-sm text-gray-600 mt-3">A instalação típica demora 1-2 dias para sistemas residenciais. Agendamos conforme a sua disponibilidade.</p>
+                <p className="text-sm text-gray-600 mt-2">Além da redução significativa nos custos de eletricidade, a energia solar é uma fonte limpa e renovável, contribuindo para a diminuição do consumo de energia da rede e, consequentemente, a sua pegada de carbono.</p>
               </details>
-              <details className="bg-solar-gray rounded-lg p-4 group">
-                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center">
-                  O que inclui a garantia?
-                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <details className="border-b border-gray-200 pb-3 group">
+                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center py-2">
+                  Qual é o benefício e o retorno do investimento em painéis solares?
+                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </summary>
-                <p className="text-sm text-gray-600 mt-3">Oferecemos 12 anos de garantia nos painéis solares, 5 anos no inversor, e 10 anos na bateria (Deye). A instalação tem garantia de 2 anos.</p>
+                <p className="text-sm text-gray-600 mt-2">A instalação de painéis solares pode reduzir significativamente a sua conta de eletricidade, com poupanças até 90%. O retorno do investimento varia, mas normalmente situa-se entre 3 a 10 anos, considerando a longa vida útil dos painéis, que é superior a 25 anos.</p>
               </details>
-              <details className="bg-solar-gray rounded-lg p-4 group">
-                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center">
-                  Posso acompanhar a produção?
-                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <details className="border-b border-gray-200 pb-3 group">
+                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center py-2">
+                  Quantos painéis solares são necessários para a minha casa ou empresa?
+                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </summary>
-                <p className="text-sm text-gray-600 mt-3">Sim! Todos os nossos sistemas incluem monitorização via app no telemóvel, onde pode ver a produção e consumo em tempo real.</p>
+                <p className="text-sm text-gray-600 mt-2">A quantidade de painéis solares necessários depende de vários fatores, como o espaço disponível, o consumo de eletricidade, a orientação dos painéis, a incidência de sombras, e o tipo de inversor.</p>
               </details>
-              <details className="bg-solar-gray rounded-lg p-4 group">
-                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center">
-                  Há financiamento disponível?
-                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <details className="border-b border-gray-200 pb-3 group">
+                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center py-2">
+                  Por que é importante instalar uma bateria junto com os painéis solares?
+                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </summary>
-                <p className="text-sm text-gray-600 mt-3">Sim, oferecemos financiamento até 120 meses com parceiros bancários. Consulte as condições connosco.</p>
+                <p className="text-sm text-gray-600 mt-2">A instalação de uma bateria em sistemas fotovoltaicos tem como principal vantagem a capacidade de armazenar energia solar excedente gerada durante o dia, para utilização em períodos sem sol, como à noite ou em dias nublados. Isso aumenta a eficiência e a independência do seu sistema solar.</p>
               </details>
-            </div>
-          </div>
-
-          {/* Reviews Section */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-            <h3 className="text-xl font-bold text-solar-blue mb-6 text-center">O Que Dizem os Nossos Clientes</h3>
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              <div className="bg-solar-gray rounded-xl p-5">
-                <div className="flex items-center gap-1 mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-sm text-gray-600 mb-3">&quot;Excelente serviço! A equipa foi muito profissional e a instalação foi rápida. Já estou a poupar na conta da luz.&quot;</p>
-                <p className="text-sm font-semibold text-solar-blue">João Silva, Lisboa</p>
-              </div>
-              <div className="bg-solar-gray rounded-xl p-5">
-                <div className="flex items-center gap-1 mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-sm text-gray-600 mb-3">&quot;Recomendo a Svet Solar a todos. O sistema com bateria permite-me ter energia mesmo durante a noite.&quot;</p>
-                <p className="text-sm font-semibold text-solar-blue">Maria Santos, Porto</p>
-              </div>
-              <div className="bg-solar-gray rounded-xl p-5">
-                <div className="flex items-center gap-1 mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-sm text-gray-600 mb-3">&quot;Processo simples do início ao fim. A app de monitorização é muito útil para ver quanto estou a produzir.&quot;</p>
-                <p className="text-sm font-semibold text-solar-blue">António Costa, Faro</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Section */}
-          <div className="bg-solar-blue rounded-2xl shadow-lg p-6 md:p-8 text-white">
-            <h3 className="text-xl font-bold mb-6 text-center">Contacte-nos</h3>
-            <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto text-center">
-              <div>
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              <details className="pb-3 group">
+                <summary className="font-medium text-solar-blue cursor-pointer list-none flex justify-between items-center py-2">
+                  É possível vender os excedentes de energia produzida pelos meus painéis solares para a rede?
+                  <svg className="w-5 h-5 transition-transform group-open:rotate-180 text-solar-orange flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
-                </div>
-                <p className="font-semibold mb-1">Telefone</p>
-                <a href="tel:+351934566607" className="text-solar-orange hover:underline">+351 934 566 607</a>
-              </div>
-              <div>
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <p className="font-semibold mb-1">Email</p>
-                <a href="mailto:info@svetsolar.pt" className="text-solar-orange hover:underline">info@svetsolar.pt</a>
-              </div>
-              <div>
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <p className="font-semibold mb-1">Morada</p>
-                <p className="text-sm text-white/80">Portugal</p>
-              </div>
+                </summary>
+                <p className="text-sm text-gray-600 mt-2">Sim, é possível e economicamente vantajoso vender o excedente de energia solar gerada pelo seu sistema fotovoltaico para a rede elétrica. Isso não só contribui para uma maior economia nas contas de energia, mas também apoia a sustentabilidade energética, injetando energia limpa na rede.</p>
+              </details>
             </div>
           </div>
         </div>
