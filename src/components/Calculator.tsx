@@ -1060,7 +1060,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
 
       {/* FAQ, Reviews & Contact - Below main grid on equipment and success pages */}
       {(step === 3 || (step === 4 && selectedPackage)) && (
-        <div className="col-span-full mt-8 space-y-8 max-w-[1280px] mx-auto">
+        <div className="col-span-full order-last mt-8 space-y-8 max-w-[1280px] mx-auto">
           {/* FAQ Section */}
           <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
             <h3 className="text-xl font-bold text-solar-blue mb-6 text-center">Perguntas Frequentes</h3>
