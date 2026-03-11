@@ -110,6 +110,9 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
   // Reviews carousel state
   const [reviewIndex, setReviewIndex] = useState(0)
 
+  // Geocoding loading state
+  const [isGeocoding, setIsGeocoding] = useState(false)
+
   // Validation errors state
   const [errors, setErrors] = useState<{
     name?: string
@@ -180,11 +183,11 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
       async (position) => {
         const { latitude, longitude } = position.coords
 
-        // Update location in form
+        // Update coordinates immediately
         setFormData(prev => ({
           ...prev,
           location: {
-            address: 'A carregar endereço...',
+            ...prev.location,
             lat: latitude,
             lng: longitude,
           }
@@ -198,6 +201,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
 
         // Reverse geocode to get address
         if (isLoaded) {
+          setIsGeocoding(true)
           const geocoder = new google.maps.Geocoder()
           try {
             const response = await geocoder.geocode({ location: { lat: latitude, lng: longitude } })
@@ -218,6 +222,8 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
             }
           } catch (error) {
             console.error('Geocoding error:', error)
+          } finally {
+            setIsGeocoding(false)
           }
         }
 
@@ -289,32 +295,46 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
       const newLat = e.latLng.lat()
       const newLng = e.latLng.lng()
 
+      // Save coordinates immediately
+      setFormData(prev => ({
+        ...prev,
+        location: { ...prev.location, lat: newLat, lng: newLng }
+      }))
+
+      // Reverse geocode for address
+      setIsGeocoding(true)
       const geocoder = new google.maps.Geocoder()
       geocoder.geocode({ location: { lat: newLat, lng: newLng } }, (results, status) => {
         if (status === 'OK' && results?.[0]) {
-          const newLocation: Location = {
-            address: results[0].formatted_address,
-            lat: newLat,
-            lng: newLng,
-            placeId: results[0].place_id,
-          }
-          setFormData(prev => ({ ...prev, location: newLocation }))
+          setFormData(prev => ({
+            ...prev,
+            location: {
+              address: results[0].formatted_address,
+              lat: newLat,
+              lng: newLng,
+              placeId: results[0].place_id,
+            }
+          }))
 
           if (inputRef.current) {
             inputRef.current.value = results[0].formatted_address
           }
-        } else {
-          setFormData(prev => ({
-            ...prev,
-            location: { ...prev.location, lat: newLat, lng: newLng }
-          }))
         }
+        setIsGeocoding(false)
       })
     }
   }, [])
 
   const handleStep1Next = () => {
-    if (!formData.location.address.trim()) {
+    if (isGeocoding) {
+      alert('A carregar endereço, aguarde um momento...')
+      return
+    }
+    if (!formData.location.lat || !formData.location.lng) {
+      alert('Por favor, selecione a sua localização no mapa')
+      return
+    }
+    if (!formData.location.address.trim() || formData.location.address === 'A carregar endereço...') {
       alert('Por favor, introduza o seu endereço')
       return
     }
@@ -382,6 +402,9 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
       }
     } catch (error) {
       console.error('CRM Error:', error)
+      alert('Erro de conexão. Tente novamente.')
+      setIsSubmitting(false)
+      return
     }
 
     setIsSubmitting(false)
@@ -433,16 +456,19 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
 
       const result = await response.json()
       if (!response.ok) {
-        // Show error but still proceed to success page
         console.error('API Error:', result.error)
+        alert(result.error || 'Erro ao processar pedido')
+        setIsSubmitting(false)
+        return
       }
 
       // Go to success page
       setStep(4)
     } catch (error) {
       console.error('CRM Error:', error)
-      // Still show success page (lead might be saved)
-      setStep(4)
+      alert('Erro de conexão. Tente novamente.')
+      setIsSubmitting(false)
+      return
     }
 
     setIsSubmitting(false)
