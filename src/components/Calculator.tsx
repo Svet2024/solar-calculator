@@ -763,7 +763,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
               onClick={handleStep1Next}
               className="w-full bg-solar-orange hover:bg-solar-orange-hover text-white font-bold py-4 px-6 rounded-full transition-colors text-lg mt-2"
             >
-              Continuar
+              Calcular o meu sistema
             </button>
           </>
         )}
@@ -904,7 +904,7 @@ export default function Calculator({ onStepChange }: CalculatorProps) {
                 disabled={isSubmitting}
                 className="flex-1 bg-solar-orange hover:bg-solar-orange-hover disabled:opacity-50 text-white font-bold py-4 px-6 rounded-full transition-colors text-lg"
               >
-                {isSubmitting ? 'A processar...' : 'Mostrar resultados'}
+                {isSubmitting ? 'A processar...' : 'Receber proposta detalhada'}
               </button>
             </div>
           </>
